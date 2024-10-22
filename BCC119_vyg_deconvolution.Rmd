@@ -6,16 +6,17 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, eval=F)
+knitr::opts_chunk$set(echo = TRUE, eval=FALSE)
 ```
 
 ## Project Summary
 
-Downloading scRNA-seq data and metadata from primary osteosarcoma in dogs to use as reference data (Ammons
-et al, Commun Biol. 2024 Apr 24).
+Downloading scRNA-seq data and metadata from primary osteosarcoma in dogs to use as reference data (Ammons et al, Commun Biol. 2024 Apr 24).
+
 Deconvolution using parallel methods CIBERTSORTx, MuSiC, and SECRET.
 
 ## Set up
+
 ```{bash}
 PROJECT=/mnt/research/bioinformaticsCore/projects/Yuzbasiyan-Gurkan/BCC119_vyg_deconvolution
 mkdir $PROJECT/src
@@ -26,9 +27,16 @@ mkdir $PROJECT/results
 ## scRNA-seq reference 
 
 ### Download reference data
+```{bash}
+mkdir $PROJECT/data/Ammons_scrna
+cd $PROJECT/data/Ammons_scrna
+wget https://zenodo.org/records/10891255/files/canine_naive_n6_annotated.rds
+```
 
 ## Deconvolution with CIBERTSORTx
 
 ## Deconvolution with MuSiC
+
+
 
 ## Deconvolution with SECRET
