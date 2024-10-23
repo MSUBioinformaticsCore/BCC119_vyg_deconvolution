@@ -6,37 +6,61 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, eval=FALSE)
+knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Project Summary
+# Project Summary
 
 Downloading scRNA-seq data and metadata from primary osteosarcoma in dogs to use as reference data (Ammons et al, Commun Biol. 2024 Apr 24).
 
 Deconvolution using parallel methods CIBERTSORTx, MuSiC, and SECRET.
 
-## Set up
+# Set up
 
-```{bash}
+## Make project directories
+```{bash, eval=FALSE}
 PROJECT=/mnt/research/bioinformaticsCore/projects/Yuzbasiyan-Gurkan/BCC119_vyg_deconvolution
 mkdir $PROJECT/src
 mkdir $PROJECT/data
 mkdir $PROJECT/results
 ```
 
-## scRNA-seq reference 
-
-### Download reference data
-```{bash}
+## Download scRNA-seq reference 
+```{bash, eval=FALSE}
 mkdir $PROJECT/data/Ammons_scrna
 cd $PROJECT/data/Ammons_scrna
 wget https://zenodo.org/records/10891255/files/canine_naive_n6_annotated.rds
 ```
 
-## Deconvolution with CIBERTSORTx
+# Deconvolution analysis
+
+```{bash, eval=FALSE}
+module purge
+module load R-bundle-CRAN/2023.12-foss-2023a
+R --vanilla
+```
+
+## Set up
+
+Set paths
+```{r}
+data.dir = "/mnt/research/bioinformaticsCore/projects/Yuzbasiyan-Gurkan/BCC119_vyg_deconvolution/data"
+
+results.dir = "/mnt/research/bioinformaticsCore/projects/Yuzbasiyan-Gurkan/BCC119_vyg_deconvolution/results"
+```
+
+Load the bulk RNA-seq data
+```{r}
+
+```
+
+Load the single-cell reference
+```{r}
+
+```
 
 ## Deconvolution with MuSiC
 
-
+## Deconvolution with SCDC
 
 ## Deconvolution with SECRET
