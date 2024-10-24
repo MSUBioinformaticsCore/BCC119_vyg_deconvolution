@@ -9,4 +9,4 @@
 module purge
 module load R-bundle-CRAN/2023.12-foss-2023a
 
-Rscript /mnt/research/bioinformaticsCore/projects/Yuzbasiyan-Gurkan/BCC119_vyg_deconvolution/SCDC.R
+Rscript /mnt/research/bioinformaticsCore/projects/Yuzbasiyan-Gurkan/BCC119_vyg_deconvolution/src/SCDC.R
