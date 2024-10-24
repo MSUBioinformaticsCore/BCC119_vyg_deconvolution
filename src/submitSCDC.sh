@@ -5,6 +5,7 @@
 #SBATCH --time=3:00:00
 #SBATCH --nodes=1
 #SBATCH --account=bioinformaticscore
+#SBATCH --constrain=intel18
 
 module purge
 module load R-bundle-CRAN/2023.12-foss-2023a
