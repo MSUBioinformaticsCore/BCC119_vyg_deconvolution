@@ -51,16 +51,175 @@ results.dir = "/mnt/research/bioinformaticsCore/projects/Yuzbasiyan-Gurkan/BCC11
 
 Load the bulk RNA-seq data
 ```{r}
-
+bulk = read.csv(paste0(data.dir, "/HS_MSU_RNAseq Analysis_rawCountsWithAnnotations.csv"))
+dim(bulk)
 ```
 
 Load the single-cell reference
 ```{r}
+library(Seurat)
 
+seuratOb = readRDS(paste0(data.dir,"/Ammons_scrna/canine_naive_n6_annotated.rds"))
+seuratOb
+```
+
+How many genes are shared between the two data sets?
+```{r}
+sum(bulk$external_gene_name %in% rownames(seuratOb))
 ```
 
 ## Deconvolution with MuSiC
 
+```{r}
+library(MuSiC)
+library(tidyverse)
+```
+
+### Format input data
+
+MuSiC requires bulk data to be formatted as a matrix.
+```{r}
+# identify rows with duplicated external_gene_name
+dups = bulk$external_gene_name[duplicated(bulk$external_gene_name)]
+
+# how many duplicated row names?  
+length(dups)
+
+# remove rows with duplicated external_gene_name
+bulk.nodups = 
+  bulk %>%
+  filter(!external_gene_name %in% dups)
+
+# select external_gene_name as rownames
+bulk.expr = bulk.nodups[,c(12:34)]
+rownames(bulk.expr) = bulk.nodups$external_gene_name
+
+bulk.mtx = as.matrix(bulk.expr)
+```
+
+MuSiC requires scRNA-seq reference data to be formatted as a `SingleCellExperiment`.
+```{r}
+library(SingleCellExperiment)
+
+# Seurat has a function for converting object type
+ref.sce = as.SingleCellExperiment(seuratOb)
+```
+
+### Estimate cell type proportions:
+
+The function `music_prop` provides output as a list with elements:
+
+* `Est.prop.weighted`: `data.frame` of MuSiC estimated proportions, subjects by cell types   
+* `Est.prop.allgene`: `data.frame` of NNLS estimated proportions, subjects by cell types   
+* `Weight.gene`: matrix, MuSiC estimated weight for each gene, genes by subjects   
+* `r.squared.full`: vector of R squared from MuSiC estimated proportions for each subject    
+* `Var.prop`: matrix of variance of MuSiC estimates   
+
+**results files:**
+
+* `music_results.Rdata`   
+* `music_proportions.csv`   
+* `music_proportions.png`    
+
+```{r}
+music.res =  music_prop(bulk.mtx = bulk.mtx, 
+                        sc.sce = ref.sce, 
+                        clusters = 'celltype.l1',
+                        samples = 'orig.ident')
+
+save(music.res, file = paste0(results.dir, "/music_results.Rdata"))
+
+write.csv(music.res$Est.prop.weighted, file = paste0(results.dir,"/music_proportions.csv"))
+
+# stacked bar
+res_df = as.data.frame(music.res$Est.prop.weighted)
+res_df$Samples =rownames(res_df)
+
+music_long = 
+  res_df %>%
+  pivot_longer(cols = -Samples,
+               names_to = "CellType", 
+               values_to = "Proportion") %>%
+  mutate(Tool = "MuSiC")
+
+# http://vrl.cs.brown.edu/color
+col20 = c("#4f8c9d", "#b9cf84", "#a84d64", "#7ed4d8", "#42455e", "#96ea4e", "#4b3596", "#39eec0", "#f92e5d", "#638123", "#5010c8", "#e4b5ff", "#b34a12", "#f1bb99", "#8d6cf6", "#20f53d", "#ea2db9", "#5281e3", "#31a62e", "#fd8992")
+
+ggplot(music_long, 
+       aes(x = Samples, 
+           y = Proportion, 
+           fill = CellType)) +
+  geom_col() +
+  scale_fill_manual(values = col20) +
+  theme_classic() +
+  coord_flip()
+
+ggsave(file = paste0(results.dir, "/music_proportions.png"))
+```
+
 ## Deconvolution with SCDC
 
+```{r}
+library(Biobase)
+library(SCDC)
+```
+
+### Set up 
+
+`SCDC` takes `ExpressionSet` objects with raw read counts as input. It needs an `ExpressionSet` for each reference individual.
+
+Convert the bulk data to an `ExpressionSet`
+```{r}
+bulk.eset <- getESET(bulk.mtx,
+                     pdata = data.frame(Sample = colnames(bulk.mtx)),
+                     fdata = rownames(bulk.mtx))
+```
+
+Convert reference  `SeuratObject` into an `ExpressionSet` object.
+```{r}
+
+ref.eset <- getESET(seuratOb[["RNA"]]$counts,
+                    pdata = seuratOb@meta.data,
+                    fdata = rownames(seuratOb))
+
+```
+
+Reference QC
+```{r}
+all_types = unique(seuratOb@meta.data$celltype.l1)
+
+ref.qc <- SCDC_qc(ref.eset,
+                  ct.varname = "celltype.l1",
+                  sample = "orig.ident",
+                  qcthreshold = 0.7,
+                  ct.sub = as.character(all_types))
+
+save(ref.qc, file = paste0(results.dir, "/SCDC_QCdata.Rdata"))
+```
+
+### Estimate cell type proportions
+
+```{r}
+scdc.res = SCDC_prop(
+                  bulk.eset = bulk.eset,
+                  sc.eset = ref.qc$sc.eset.qc,
+                  ct.varname = "celltype.l1",
+                  sample = "orig.ident",
+                  ct.sub = as.character(all_types))
+
+save(scdc.res, file = paste0(results.dir, "/SCDC_res.Rdata"))
+```
+
 ## Deconvolution with SECRET
+
+## Summary
+```{r}
+all_long = rbind(music_long)
+```
+
+
+## Session info
+```{r}
+sessionInfo()
+```
+
