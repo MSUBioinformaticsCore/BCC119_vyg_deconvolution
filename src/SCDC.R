@@ -3,6 +3,7 @@
 library(Biobase)
 library(SCDC)
 library(Seurat)
+library(tidyverse)
 
 # Set paths
 data.dir = "/mnt/research/bioinformaticsCore/projects/Yuzbasiyan-Gurkan/BCC119_vyg_deconvolution/data"
