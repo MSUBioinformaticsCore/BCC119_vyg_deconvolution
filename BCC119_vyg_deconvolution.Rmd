@@ -238,12 +238,91 @@ ggsave(file = paste0(results.dir, "/SCDC_proportions.png"))
 
 ### Set up
 
-Secret requires a list of cell-type marker genes. Here, I used the marker genes described in Ammons et al's [Supplementary Data 2: `42003_2024_6182_MOESM5_ESM.csv`]( https://static-content.springer.com/esm/art%3A10.1038%2Fs42003-024-06182-w/MediaObjects/42003_2024_6182_MOESM5_ESM.csv)
+SECRET requires a list of cell-type marker genes. Here, I performed differential expression analysis using the ‘FindConservedMarkers’ function in the *Seurat* package, with cut offs described in by the authors of SECRET, [Lu et al. 2023](https://pmc.ncbi.nlm.nih.gov/articles/PMC10748484/#SEC5):
 
+> The detection of DEG involved conducting a likelihood-ratio test, focusing on genes observable in a certain percentage of cells across the cell types under comparison. We imposed a restriction in our analysis to consider only those genes that were present in a minimum of 25% of cells in any of the two comparative groups, ensuring the statistical significance and relevance of the genes analyzed.
+
+I used a wilcox test instead of an LR test for speed.
 ```{r}
+library(presto)
+library(metap)
 
+Idents(object = seuratOb) <- "celltype.l1"
+
+markers_list = list()  
+
+for (ct in as.character(all_types)){
+  
+  print(ct)
+  markers_list[[ct]] = 
+    FindConservedMarkers(seuratOb, 
+                         ident.1 = ct,
+                         min.pct = 0.25,
+                         only.pos = TRUE,
+                         grouping.var = "orig.ident")
+  
+  markers_list[[ct]]$CellType = ct
+}
+
+save(markers_list, file = paste0(results.dir, "/ref_markers.Rdata"))
+
+markers_list = lapply(markers_list, function(df){
+  df$Gene = rownames(df);
+  df =  
+    df %>%
+    select(Gene, CellType, minimump_p_val) %>%
+    filter(minimump_p_val < .01)
+})
+
+markers_df = do.call(rbind, markers_list)
 ```
 
+Filter genes and calculate gene weights
+```{r}
+# count for gene frequency
+w=as.data.frame(table(markers_df$Gene))
+colnames(w)[1]='genes'
+rownames(w)=w$genes
+
+# make a matrix from the seurat object
+refdat = as.matrix(seuratOb[["RNA"]]$counts)
+
+### find the shared genes and subset the data
+glist=Reduce(intersect,list(rownames(bulk.mtx),
+                            rownames(refdat),
+                            (markers_df$Gene)))
+
+w=w[glist,]
+
+bulkdat2<-bulk.mtx[as.character(w$genes),]
+bulkdat2 = bulkdat2[order(row.names(bulkdat2)),]
+
+refdat2<-refdat[as.character(w$genes),]
+refdat2 = refdat2[order(row.names(refdat2)),]
+
+print(identical(rownames(bulkdat2),rownames(refdat2)))
+#> [1] TRUE
+w = w[order(rownames(w)),]
+print(identical(rownames(bulkdat2),rownames(w)))
+#> [1] TRUE
+ 
+w$weight=1/w$Freq
+```
+
+### Estimate cell type propotion using SECRET
+```{r}
+library(SECRET)
+
+wt=w$weight
+secret.res=SECRET(bulkdat2,
+                  refdat2,
+                  withUnknown = T,
+                  w=wt,
+                  yNorm = 'cpm',
+                  bNorm='cpm')[[1]]
+
+save(secret.res, file = paste0(results.dir, "/SECRET_res.Rdata"))
+```
 
 ## Summary
 ```{r}
