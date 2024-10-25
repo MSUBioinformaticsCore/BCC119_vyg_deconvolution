@@ -55,7 +55,7 @@ all_types = unique(seuratOb@meta.data$celltype.l1)
 ref.qc <- SCDC_qc(ref.eset,
                   ct.varname = "celltype.l1",
                   sample = "orig.ident",
-                  qcthreshold = 0.7,
+                  qcthreshold = 0.5,
                   ct.sub = as.character(all_types))
 
 save(ref.qc, file = paste0(results.dir, "/SCDC_QCdata.Rdata"))
