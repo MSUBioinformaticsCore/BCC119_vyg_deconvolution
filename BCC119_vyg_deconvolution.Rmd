@@ -140,7 +140,8 @@ music_long =
   pivot_longer(cols = -Samples,
                names_to = "CellType", 
                values_to = "Proportion") %>%
-  mutate(Tool = "MuSiC")
+  mutate(Tool = "MuSiC",
+         CellType = gsub(" ", ".", CellType))
 
 # http://vrl.cs.brown.edu/color
 col20 = c("#4f8c9d", "#b9cf84", "#a84d64", "#7ed4d8", "#42455e", "#96ea4e", "#4b3596", "#39eec0", "#f92e5d", "#638123", "#5010c8", "#e4b5ff", "#b34a12", "#f1bb99", "#8d6cf6", "#20f53d", "#ea2db9", "#5281e3", "#31a62e", "#fd8992")
@@ -198,7 +199,6 @@ save(ref.qc, file = paste0(results.dir, "/SCDC_QCdata.Rdata"))
 ```
 
 ### Estimate cell type proportions
-
 ```{r}
 scdc.res = SCDC_prop(
                   bulk.eset = bulk.eset,
@@ -208,13 +208,87 @@ scdc.res = SCDC_prop(
                   ct.sub = as.character(all_types))
 
 save(scdc.res, file = paste0(results.dir, "/SCDC_res.Rdata"))
+write.csv(scdc.res$prop.est.mvw, file = paste0(results.dir,"/SCDC_proportions.csv"))
+
+# stacked bar
+res_df = as.data.frame(scdc.res$prop.est.mvw)
+res_df$Samples =rownames(res_df)
+
+scdc_long = 
+  res_df %>%
+  pivot_longer(cols = -Samples,
+               names_to = "CellType", 
+               values_to = "Proportion") %>%
+  mutate(Tool = "SCDC",
+         CellType = gsub(" ", ".", CellType))
+
+ggplot(scdc_long, 
+       aes(x = Samples, 
+           y = Proportion, 
+           fill = CellType)) +
+  geom_col() +
+  scale_fill_manual(values = col20) +
+  theme_classic() +
+  coord_flip()
+
+ggsave(file = paste0(results.dir, "/SCDC_proportions.png"))
 ```
 
 ## Deconvolution with SECRET
 
+### Set up
+
+Secret requires a list of cell-type marker genes. Here, I used the marker genes described in Ammons et al's [Supplementary Data 2: `42003_2024_6182_MOESM5_ESM.csv`]( https://static-content.springer.com/esm/art%3A10.1038%2Fs42003-024-06182-w/MediaObjects/42003_2024_6182_MOESM5_ESM.csv)
+
+```{r}
+
+```
+
+
 ## Summary
 ```{r}
 all_long = rbind(music_long)
+
+
+library(dplyr)
+library(tidyr)
+library(purrr)
+
+pairwise_correlations <- function(df, group_var, var_name, value) {
+  
+  # Ensure the data is in long format and grouped by the grouping variable
+  df %>%
+    # Spread data into wide format so that each variable is a separate column
+    pivot_wider(names_from = {{ var_name }}, values_from = {{ value }}) %>%
+    # Group by the group_var (can be any variable like 'group', 'ID', etc.)
+    group_by({{ group_var }}) %>%
+    # Nest data by group to iterate over each group separately
+    nest() %>%
+    # Apply pairwise correlation within each group
+    mutate(cor_results = map(data, ~{
+      data <- .x
+      # Get variable names
+      var_names <- colnames(data)
+      # Get all pairwise combinations of variables
+      combs <- combn(var_names, 2, simplify = FALSE)
+      
+      # Perform pairwise correlations for all combinations
+      map_dfr(combs, function(pair) {
+        cor_test <- cor.test(data[[pair[1]]], data[[pair[2]]], use = "complete.obs")
+        tibble(
+          var1 = pair[1],
+          var2 = pair[2],
+          correlation = cor_test$estimate,
+          p_value = cor_test$p.value
+        )
+      })
+    })) %>%
+    # Unnest the correlation results to get a flat table
+    unnest(cor_results)
+}
+
+# Example usage (assuming 'df' is your long data frame):
+# result <- pairwise_correlations(df, group_var = group, var_name = variable, value = value)
 ```
 
 
