@@ -1,6 +1,6 @@
 #!/bin/bash -login
 #SBATCH --mem=100GB
-#SBATCH --job-name=SCDC
+#SBATCH --job-name=SECRET
 #SBATCH --output=%x-%j.out
 #SBATCH --time=3:00:00
 #SBATCH --nodes=1

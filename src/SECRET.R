@@ -40,6 +40,8 @@ Idents(object = seuratOb) <- "celltype.l1"
 
 markers_list = list()  
 
+all_types = unique(seuratOb@meta.data$celltype.l1)
+
 for (ct in as.character(all_types)){
   
   print(ct)
