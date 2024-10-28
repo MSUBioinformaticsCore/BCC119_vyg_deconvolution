@@ -234,6 +234,55 @@ ggplot(scdc_long,
 ggsave(file = paste0(results.dir, "/SCDC_proportions.png"))
 ```
 
+## Deconvolution with music and SCDC qc'd reference
+
+ExpressionSet -> SingleCellExperiment
+```{r}
+library(SummarizedExperiment)
+library(scater)
+
+ref.qc.counts = exprs(ref.qc$sc.eset.qc)
+ref.qc.pheno = pData(ref.qc$sc.eset.qc)
+
+ref.qc.sce <- SingleCellExperiment(list(counts=ref.qc.counts),
+                                colData=DataFrame(ref.qc.pheno))
+
+music.qc.res =  music_prop(bulk.mtx = bulk.mtx, 
+                           sc.sce = ref.qc.sce, 
+                           clusters = 'celltype.l1',
+                           samples = 'orig.ident')
+
+save(music.qc.res, file = paste0(results.dir, "/music.qc_results.Rdata"))
+
+write.csv(music.qc.res$Est.prop.weighted, file = paste0(results.dir,"/music.qc_proportions.csv"))
+
+# stacked bar
+res_df = as.data.frame(music.qc.res$Est.prop.weighted)
+res_df$Samples =rownames(res_df)
+
+music.qc_long = 
+  res_df %>%
+  pivot_longer(cols = -Samples,
+               names_to = "CellType", 
+               values_to = "Proportion") %>%
+  mutate(Tool = "MuSiC.SCDC.qc",
+         CellType = gsub(" ", ".", CellType))
+
+# http://vrl.cs.brown.edu/color
+col20 = c("#4f8c9d", "#b9cf84", "#a84d64", "#7ed4d8", "#42455e", "#96ea4e", "#4b3596", "#39eec0", "#f92e5d", "#638123", "#5010c8", "#e4b5ff", "#b34a12", "#f1bb99", "#8d6cf6", "#20f53d", "#ea2db9", "#5281e3", "#31a62e", "#fd8992")
+
+ggplot(music.qc_long, 
+       aes(x = Samples, 
+           y = Proportion, 
+           fill = CellType)) +
+  geom_col() +
+  scale_fill_manual(values = col20) +
+  theme_classic() +
+  coord_flip()
+
+ggsave(file = paste0(results.dir, "/music.qc_proportions.png"))
+```
+
 ## Deconvolution with SECRET
 
 ### Set up
