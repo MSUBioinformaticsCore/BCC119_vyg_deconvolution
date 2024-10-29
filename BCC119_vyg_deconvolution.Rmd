@@ -1,12 +1,20 @@
 ---
-title: "Deconvolution"
+title: "scRNA-seq analysis in R"
 author: "Stephanie Hickey"
-date: "2024-10-22"
-output: html_document
+date: "2024-07-23"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: hide
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE)
+```
+
+```{css, echo=FALSE}
+pre, code {white-space:pre !important; overflow-x:auto}
 ```
 
 # Project Summary
@@ -135,6 +143,8 @@ write.csv(music.res$Est.prop.weighted, file = paste0(results.dir,"/music_proport
 res_df = as.data.frame(music.res$Est.prop.weighted)
 res_df$Samples =rownames(res_df)
 
+# res_df = rename(res_df, Samples = "X")
+
 music_long = 
   res_df %>%
   pivot_longer(cols = -Samples,
@@ -214,6 +224,8 @@ write.csv(scdc.res$prop.est.mvw, file = paste0(results.dir,"/SCDC_proportions.cs
 res_df = as.data.frame(scdc.res$prop.est.mvw)
 res_df$Samples =rownames(res_df)
 
+# res_df = rename(res_df, Samples = "X")
+
 scdc_long = 
   res_df %>%
   pivot_longer(cols = -Samples,
@@ -259,6 +271,8 @@ write.csv(music.qc.res$Est.prop.weighted, file = paste0(results.dir,"/music.qc_p
 # stacked bar
 res_df = as.data.frame(music.qc.res$Est.prop.weighted)
 res_df$Samples =rownames(res_df)
+
+# res_df = rename(res_df, Samples = "X")
 
 music.qc_long = 
   res_df %>%
@@ -375,19 +389,45 @@ save(secret.res, file = paste0(results.dir, "/SECRET_res.Rdata"))
 
 ## Summary
 ```{r}
-all_long = rbind(music_long)
+all_long = rbind(music_long, 
+                 music.qc_long, 
+                 scdc_long) 
+                 #secret_long)
 
+# plot by tool, facet sample?
+ggplot(all_long, 
+       aes(x = Tool, 
+           y = Proportion, 
+           fill = CellType)) +
+  geom_col() +
+  scale_fill_manual(values = col20) +
+  theme_classic() +
+  coord_flip() +
+  facet_wrap(~Samples)
 
-library(dplyr)
-library(tidyr)
-library(purrr)
+ggsave(file = paste0(results.dir, "/all_tool_proportions.png"),
+       width = 15,
+       height = 10)
 
-pairwise_correlations <- function(df, group_var, var_name, value) {
+# pairwise correlations
+tools_wide = 
+  all_long %>%
+  pivot_wider(id_cols = c(Samples, CellType), 
+              names_from = Tool, 
+              values_from = Proportion)
+
+write.csv(tools_wide, 
+          file = paste0(results.dir, "/proportions_all_tools.csv"),
+          row.names = FALSE)
+
+tools_wide = 
+  tools_wide %>%
+  select(-CellType)
+
+pairwise_correlations <- function(df, group_var) {
   
-  # Ensure the data is in long format and grouped by the grouping variable
+  
   df %>%
-    # Spread data into wide format so that each variable is a separate column
-    pivot_wider(names_from = {{ var_name }}, values_from = {{ value }}) %>%
     # Group by the group_var (can be any variable like 'group', 'ID', etc.)
     group_by({{ group_var }}) %>%
     # Nest data by group to iterate over each group separately
@@ -415,8 +455,39 @@ pairwise_correlations <- function(df, group_var, var_name, value) {
     unnest(cor_results)
 }
 
-# Example usage (assuming 'df' is your long data frame):
-# result <- pairwise_correlations(df, group_var = group, var_name = variable, value = value)
+pw.result <- pairwise_correlations(tools_wide, group_var = Samples)
+
+library(RColorBrewer)
+library(hrbrthemes)
+library(patchwork)
+
+hm_list = list()
+rng = range(pw.result$correlation)
+
+# no x y labs
+# no grid lines
+# vertical x axis lab
+# smaller title
+# print rounded number in box
+
+for(s in unique(pw.result$Samples)){
+  
+  hm_list[[s]] = 
+    pw.result %>%
+    filter(Samples == s) %>%
+    ggplot(aes(var1, var2, fill= correlation)) + 
+      geom_tile() +
+      coord_equal() +
+      scale_fill_gradientn(colors = brewer.pal(9, "YlOrRd"),
+                           limits=c(floor(rng[1]), ceiling(rng[2]))) +
+      ggtitle(s) +
+      theme_minimal()
+}
+
+wrap_plots(hm_list) + plot_layout(guides = 'collect')
+ggsave(paste0(results.dir, "/correlation_heatmap.png"),
+       width = 12,
+       height = 12)
 ```
 
 
