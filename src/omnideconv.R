@@ -98,7 +98,7 @@ if(tool == "scaden"){
 if(tool == "scdc"){
   
   single_cell_object <- as.matrix(seuratOb[["RNA"]]$counts)
-  cell.type.annotations <- seuratOb@metadata %>% pull(all_of(annotation.col))
+  cell.type.annotations <- seuratOb@meta.data %>% pull(all_of(annotation.col))
   batch.ids <- seuratOb@metadata %>% pull(all_of(batch.col))
 
   deconvolution <- omnideconv::deconvolute(bulk_gene_expression = bulk.mtx,
