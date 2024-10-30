@@ -101,15 +101,27 @@ if(tool == "scdc"){
   single_cell_object <- as.matrix(seuratOb[["RNA"]]$counts)
   cell.type.annotations <- seuratOb@meta.data %>% pull(all_of(annotation.col))
   batch.ids <- seuratOb@meta.data %>% pull(all_of(batch.col))
+  
 
   deconvolution <- omnideconv::deconvolute(bulk_gene_expression = bulk.mtx,
                                            method = "scdc",
                                            single_cell_object = single_cell_object, 
                                            cell_type_annotations = cell.type.annotations, 
                                            batch_ids = batch.ids,
-                                           quality_control = TRUE)
+                                           quality_control = TRUE,
+                                           ct.sub = colnames(seuratOb))
   
-  saveRDS(deconvolution, file = paste0(tool, "_deconvolution.rds"))
+  saveRDS(deconvolution, file = paste0(tool, "_deconvolution_withQC.rds"))
+  
+  deconvolution <- omnideconv::deconvolute(bulk_gene_expression = bulk.mtx,
+                                           method = "scdc",
+                                           single_cell_object = single_cell_object, 
+                                           cell_type_annotations = cell.type.annotations, 
+                                           batch_ids = batch.ids,
+                                           quality_control = FALSE,
+                                           ct.sub = colnames(seuratOb))
+  
+  saveRDS(deconvolution, file = paste0(tool, "_deconvolution_noQC.rds"))
   
 }
 
