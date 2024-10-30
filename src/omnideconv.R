@@ -30,8 +30,8 @@ seuratOb = readRDS(ref.seurat.path)
 max_cells_per_celltype = 200
 
 sampled.metadata <- seuratOb@meta.data %>%
-  rownames_to_column(., 'barcode') %>%
-  group_by(., annotation.col) %>% 
+  rownames_to_column('barcode') %>%
+  group_by_at(annotation.col) %>% 
   nest() %>%            
   mutate(n =  map_dbl(data, nrow)) %>%
   mutate(n = min(n, max_cells_per_celltype)) %>%
