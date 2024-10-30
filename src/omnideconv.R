@@ -72,8 +72,6 @@ if(tool == "dwls"){
 
 if(tool == "scaden"){
   
-  reticulate::use_python("/mnt/home/hickeys6/anaconda3/bin/python")
-  
   single_cell_object <- as.matrix(single.cell.data.sampled[["RNA"]]$counts)
   cell.type.annotations <- sampled.metadata %>% pull(all_of(annotation.col))
   batch.ids <- sampled.metadata %>% pull(all_of(batch.col))
@@ -106,8 +104,8 @@ if(tool == "scdc"){
   deconvolution <- omnideconv::deconvolute(bulk_gene_expression = bulk.mtx,
                                            method = "scdc",
                                            single_cell_object, 
-                                           cell_type_annotations, 
-                                           batch_ids,
+                                           cell_type_annotations = cell.type.annotations, 
+                                           batch_ids = batch.ids,
                                            quality_control = TRUE)
   
   saveRDS(deconvolution, file = paste0(tool, "_deconvolution.rds"))
@@ -125,8 +123,8 @@ if(tool == "music"){
   deconvolution <- omnideconv::deconvolute(bulk_gene_expression = bulk.mtx,
                                            method = "music",
                                            single_cell_object, 
-                                           cell_type_annotations, 
-                                           batch_ids)
+                                           cell_type_annotations = cell.type.annotations, 
+                                           batch_ids = batch.ids)
   
   saveRDS(deconvolution, file = paste0(tool, "_deconvolution.rds"))
   
