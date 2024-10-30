@@ -72,6 +72,8 @@ if(tool == "dwls"){
 
 if(tool == "scaden"){
   
+  reticulate::use_python("/mnt/home/hickeys6/anaconda3/bin/python")
+  
   single_cell_object <- as.matrix(single.cell.data.sampled[["RNA"]]$counts)
   cell.type.annotations <- sampled.metadata %>% pull(all_of(annotation.col))
   batch.ids <- sampled.metadata %>% pull(all_of(batch.col))
@@ -99,7 +101,7 @@ if(tool == "scdc"){
   
   single_cell_object <- as.matrix(seuratOb[["RNA"]]$counts)
   cell.type.annotations <- seuratOb@meta.data %>% pull(all_of(annotation.col))
-  batch.ids <- seuratOb@metadata %>% pull(all_of(batch.col))
+  batch.ids <- seuratOb@meta.data %>% pull(all_of(batch.col))
 
   deconvolution <- omnideconv::deconvolute(bulk_gene_expression = bulk.mtx,
                                            method = "scdc",
@@ -117,8 +119,8 @@ if(tool == "scdc"){
 if(tool == "music"){
   
   single_cell_object <- as.matrix(seuratOb[["RNA"]]$counts)
-  cell.type.annotations <- seuratOb@metadata %>% pull(all_of(annotation.col))
-  batch.ids <- seuratOb@metadata %>% pull(all_of(batch.col))
+  cell.type.annotations <- seuratOb@meta.data %>% pull(all_of(annotation.col))
+  batch.ids <- seuratOb@meta.data %>% pull(all_of(batch.col))
   
   deconvolution <- omnideconv::deconvolute(bulk_gene_expression = bulk.mtx,
                                            method = "music",
