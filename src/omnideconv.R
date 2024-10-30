@@ -105,7 +105,8 @@ if(tool == "scdc"){
                                            method = "scdc",
                                            single_cell_object, 
                                            cell_type_annotations, 
-                                           batch_ids)
+                                           batch_ids,
+                                           quality_control = TRUE)
   
   saveRDS(deconvolution, file = paste0(tool, "_deconvolution.rds"))
   

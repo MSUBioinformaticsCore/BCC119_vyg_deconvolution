@@ -368,14 +368,19 @@ echo "results.dir:" $7
 ```{bash}
 cd $PROJECT/run
 
+for tool in dwls #scaden scdc music
+do
+
 sbatch $PROJECT/src/submit_omnideconv.sh \
   $PROJECT/src/omnideconv.R \
   $PROJECT/data/Ammons_scrna/canine_naive_n6_annotated.rds \
   $PROJECT/data/bulk_count_mat.Rds \
-  dwls \
+  $tool \
   celltype.l1 \
   orig.ident \
   $PROJECT/results
+  
+done
   
 ```
 
