@@ -50,7 +50,7 @@ if(tool == "dwls"){
   cell.type.annotations <- sampled.metadata %>% pull(all_of(annotation.col))
   batch.ids <- sampled.metadata %>% pull(all_of(batch.col))
   
-  signature <- omnideconv::build_model(single_cell_object,
+  signature <- omnideconv::build_model(single_cell_object = single_cell_object,
                                        cell_type_annotations = cell.type.annotations,
                                        batch_ids = batch.ids, 
                                        method = "dwls", 
@@ -76,11 +76,12 @@ if(tool == "scaden"){
   cell.type.annotations <- sampled.metadata %>% pull(all_of(annotation.col))
   batch.ids <- sampled.metadata %>% pull(all_of(batch.col))
   
-  signature <- omnideconv::build_model(single_cell_object,
+  signature <- omnideconv::build_model(single_cell_object = single_cell_object,
                                        cell_type_annotations = cell.type.annotations,
                                        batch_ids = batch.ids, 
                                        method = "scaden", 
-                                       bulk_gene_expression = bulk.mtx)
+                                       bulk_gene_expression = bulk.mtx,
+                                       verbose =TRUE)
   
   saveRDS(signature, file = paste0(tool, "_signature.rds"))
   
@@ -103,7 +104,7 @@ if(tool == "scdc"){
 
   deconvolution <- omnideconv::deconvolute(bulk_gene_expression = bulk.mtx,
                                            method = "scdc",
-                                           single_cell_object, 
+                                           single_cell_object = single_cell_object, 
                                            cell_type_annotations = cell.type.annotations, 
                                            batch_ids = batch.ids,
                                            quality_control = TRUE)
@@ -122,7 +123,7 @@ if(tool == "music"){
   
   deconvolution <- omnideconv::deconvolute(bulk_gene_expression = bulk.mtx,
                                            method = "music",
-                                           single_cell_object, 
+                                           single_cell_object = single_cell_object, 
                                            cell_type_annotations = cell.type.annotations, 
                                            batch_ids = batch.ids)
   
