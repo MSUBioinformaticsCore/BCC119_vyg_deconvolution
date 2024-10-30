@@ -1,0 +1,48 @@
+---
+title: "Estimate immune cell proportions in tumor samples"
+author: "Stephanie Hickey"
+date: `r Sys.Date()`
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: hide
+---
+
+```{r, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE)
+```
+
+```{css, echo=FALSE}
+pre, code {white-space:pre !important; overflow-x:auto}
+```
+
+# Project Summary
+
+Here we use single-cell RNA-seq data from primary osteosarcoma in 6 treatment-naïve dogs ([Ammons et al, Commun Biol. 2024 Apr 24](https://www.nature.com/articles/s42003-024-06182-w)) as a reference data set to estimate immune cell proportions in bulk tumor samples using parallel methods [MuSiC](https://xuranw.github.io/MuSiC/articles/MuSiC.html) and [SCDC]().
+
+The following cell types are included in the reference data:
+
+  1. TAM    
+  2. T cell   
+  3. Endothelial cell   
+  4. Osteoblast   
+  5. T_cycling    
+  6. Hypoxic_osteoblast   
+  7. Cycling_OC   
+  8. Osteoblast_cycling   
+  9. B cell   
+  10. Neutrophil    
+  11. IFN-TAM   
+  12. CD320_OC    
+  13. Fibroblast    
+  14. T_IFN   
+  15. IFN-osteoblast    
+  16. DC    
+  17. NK    
+  18. Mature_OC   
+  19. Mast cell   
+  20. TIM   
+
+Both MuSiC and SCDC take advantage of multi-subject reference data sets appropriatly weighting genes showing cross-subject and cross-cell consistency.
+
