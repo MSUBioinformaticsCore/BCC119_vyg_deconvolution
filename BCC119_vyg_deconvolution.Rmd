@@ -1,7 +1,7 @@
 ---
-title: "scRNA-seq analysis in R"
+title: "Estimate immune cell proportions in tumor samples"
 author: "Stephanie Hickey"
-date: "2024-07-23"
+date: `r Sys.Date()`
 output: 
   html_document:
     toc: true
@@ -21,7 +21,7 @@ pre, code {white-space:pre !important; overflow-x:auto}
 
 Downloading scRNA-seq data and metadata from primary osteosarcoma in dogs to use as reference data (Ammons et al, Commun Biol. 2024 Apr 24).
 
-Deconvolution using parallel methods CIBERTSORTx, MuSiC, and SECRET.
+Deconvolution using parallel methods MuSiC and SCDC.
 
 # Set up
 
@@ -38,6 +38,26 @@ mkdir $PROJECT/results
 mkdir $PROJECT/data/Ammons_scrna
 cd $PROJECT/data/Ammons_scrna
 wget https://zenodo.org/records/10891255/files/canine_naive_n6_annotated.rds
+```
+
+## Download gtf
+```{bash}
+cd $PROJECT/data
+wget https://ftp.ensembl.org/pub/release-113/gtf/canis_lupus_familiarisboxer/Canis_lupus_familiarisboxer.Dog10K_Boxer_Tasha.113.gtf.gz
+```
+
+## Get gene lengths
+
+Using [gfttools](http://www.genemine.org/gtftools.php) 
+```{bash}
+module purge
+module load Conda/3
+
+pip install gtftools
+
+gunzip Canis_lupus_familiarisboxer.Dog10K_Boxer_Tasha.113.gtf.gz
+
+gtftools -l gene_lengths.txt Canis_lupus_familiarisboxer.Dog10K_Boxer_Tasha.113.gtf
 ```
 
 # Deconvolution analysis
@@ -63,6 +83,11 @@ bulk = read.csv(paste0(data.dir, "/HS_MSU_RNAseq Analysis_rawCountsWithAnnotatio
 dim(bulk)
 ```
 
+Load the gene lengths
+```{r}
+gene_lengths = read.delim(paste0(data.dir, "/gene_lengths.txt"))
+```
+
 Load the single-cell reference
 ```{r}
 library(Seurat)
@@ -76,16 +101,7 @@ How many genes are shared between the two data sets?
 sum(bulk$external_gene_name %in% rownames(seuratOb))
 ```
 
-## Deconvolution with MuSiC
-
-```{r}
-library(MuSiC)
-library(tidyverse)
-```
-
-### Format input data
-
-MuSiC requires bulk data to be formatted as a matrix.
+Format bulk data
 ```{r}
 # identify rows with duplicated external_gene_name
 dups = bulk$external_gene_name[duplicated(bulk$external_gene_name)]
@@ -103,6 +119,48 @@ bulk.expr = bulk.nodups[,c(12:34)]
 rownames(bulk.expr) = bulk.nodups$external_gene_name
 
 bulk.mtx = as.matrix(bulk.expr)
+
+saveRDS(bulk.mtx, file = paste0(data.dir, "/bulk_count_mat.Rds"))
+
+# grab ensemble ids for genes in bulk mat
+keep_symbols = rownames(bulk.mtx)
+
+ids =
+  bulk %>%
+  filter(external_gene_name %in% keep_symbols) %>%
+  select(ensembl_gene_id, external_gene_name)
+
+identical(ids$external_gene_name, rownames(bulk.mtx))
+
+rownames(gene_lengths) = gene_lengths$gene
+
+keep_lengths = gene_lengths[ids$ensembl_gene_id,]
+identical(ids$ensembl_gene_id, rownames(keep_lengths))
+
+calculate_tpm <- function(count_matrix, gene_lengths) {
+  # Step 1: Calculate Reads Per Kilobase (RPK)
+  # Convert gene lengths from base pairs to kilobases for TPM calculation
+  gene_lengths_kb <- gene_lengths / 1000
+  
+  # Divide each count by gene length in kilobases
+  rpk <- sweep(count_matrix, 1, gene_lengths_kb, "/")
+  
+  # Step 2: Calculate the scaling factor (sum of RPKs per sample)
+  scaling_factor <- colSums(rpk)
+  
+  # Step 3: Calculate TPM
+  tpm <- sweep(rpk, 2, scaling_factor, "/") * 1e6
+  
+  return(tpm)
+}
+
+```
+
+## Deconvolution with MuSiC
+
+```{r}
+library(MuSiC)
+library(tidyverse)
 ```
 
 MuSiC requires scRNA-seq reference data to be formatted as a `SingleCellExperiment`.
@@ -297,102 +355,45 @@ ggplot(music.qc_long,
 ggsave(file = paste0(results.dir, "/music.qc_proportions.png"))
 ```
 
-## Deconvolution with SECRET
+# Use omnideconv
 
-### Set up
+echo "omnideconv.R path:" $1
+echo "ref.seurat.path:" $2
+echo "bulk.mtx.path:" $3
+echo "tool:" $4
+echo "annotation.col:" $5
+echo "batch.col:" $6
+echo "results.dir:" $7
 
-SECRET requires a list of cell-type marker genes. Here, I performed differential expression analysis using the ‘FindConservedMarkers’ function in the *Seurat* package, with cut offs described in by the authors of SECRET, [Lu et al. 2023](https://pmc.ncbi.nlm.nih.gov/articles/PMC10748484/#SEC5):
+```{bash}
+cd $PROJECT/run
 
-> The detection of DEG involved conducting a likelihood-ratio test, focusing on genes observable in a certain percentage of cells across the cell types under comparison. We imposed a restriction in our analysis to consider only those genes that were present in a minimum of 25% of cells in any of the two comparative groups, ensuring the statistical significance and relevance of the genes analyzed.
-
-I used a wilcox test instead of an LR test for speed.
-```{r}
-library(presto)
-library(metap)
-
-Idents(object = seuratOb) <- "celltype.l1"
-
-markers_list = list()  
-
-for (ct in as.character(all_types)){
+sbatch $PROJECT/src/submit_omnideconv.sh \
+  $PROJECT/src/omnideconv.R \
+  $PROJECT/data/Ammons_scrna/canine_naive_n6_annotated.rds \
+  $PROJECT/data/bulk_count_mat.Rds \
+  dwls \
+  celltype.l1 \
+  orig.ident \
+  $PROJECT/results
   
-  print(ct)
-  markers_list[[ct]] = 
-    FindConservedMarkers(seuratOb, 
-                         ident.1 = ct,
-                         min.pct = 0.25,
-                         only.pos = TRUE,
-                         grouping.var = "orig.ident")
-  
-  markers_list[[ct]]$CellType = ct
-}
-
-save(markers_list, file = paste0(results.dir, "/ref_markers.Rdata"))
-
-markers_list = lapply(markers_list, function(df){
-  df$Gene = rownames(df);
-  df =  
-    df %>%
-    select(Gene, CellType, minimump_p_val) %>%
-    filter(minimump_p_val < .01)
-})
-
-markers_df = do.call(rbind, markers_list)
-```
-
-Filter genes and calculate gene weights
-```{r}
-# count for gene frequency
-w=as.data.frame(table(markers_df$Gene))
-colnames(w)[1]='genes'
-rownames(w)=w$genes
-
-# make a matrix from the seurat object
-refdat = as.matrix(seuratOb[["RNA"]]$counts)
-
-### find the shared genes and subset the data
-glist=Reduce(intersect,list(rownames(bulk.mtx),
-                            rownames(refdat),
-                            (markers_df$Gene)))
-
-w=w[glist,]
-
-bulkdat2<-bulk.mtx[as.character(w$genes),]
-bulkdat2 = bulkdat2[order(row.names(bulkdat2)),]
-
-refdat2<-refdat[as.character(w$genes),]
-refdat2 = refdat2[order(row.names(refdat2)),]
-
-print(identical(rownames(bulkdat2),rownames(refdat2)))
-#> [1] TRUE
-w = w[order(rownames(w)),]
-print(identical(rownames(bulkdat2),rownames(w)))
-#> [1] TRUE
- 
-w$weight=1/w$Freq
-```
-
-### Estimate cell type propotion using SECRET
-```{r}
-library(SECRET)
-
-wt=w$weight
-secret.res=SECRET(bulkdat2,
-                  refdat2,
-                  withUnknown = T,
-                  w=wt,
-                  yNorm = 'cpm',
-                  bNorm='cpm')[[1]]
-
-save(secret.res, file = paste0(results.dir, "/SECRET_res.Rdata"))
 ```
 
 ## Summary
 ```{r}
 all_long = rbind(music_long, 
                  music.qc_long, 
-                 scdc_long) 
+                 scdc_long,
+                 fake_secret) 
                  #secret_long)
+
+#rand_seq_empirical <- quantile(music_long$Proportion, 
+                               #probs = runif(length(music_long$Proportion)))
+
+#fake_secret = 
+  #music_long %>%
+  #mutate(Tool = "Secret",
+        #Proportion = rand_seq_empirical)
 
 # plot by tool, facet sample?
 ggplot(all_long, 
@@ -475,18 +476,26 @@ for(s in unique(pw.result$Samples)){
   hm_list[[s]] = 
     pw.result %>%
     filter(Samples == s) %>%
+    mutate(CorrPrint = round(correlation, 2)) %>%
     ggplot(aes(var1, var2, fill= correlation)) + 
-      geom_tile() +
+      geom_tile(color = "white") +
+      geom_text(aes(label = CorrPrint), 
+                color = "white",
+                size = 3) +
       coord_equal() +
       scale_fill_gradientn(colors = brewer.pal(9, "YlOrRd"),
                            limits=c(floor(rng[1]), ceiling(rng[2]))) +
       ggtitle(s) +
-      theme_minimal()
+      labs(x = NULL, y = NULL) +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1),
+            panel.grid = element_blank(),
+            plot.title = element_text(size = 10, face = "bold")) 
 }
 
-wrap_plots(hm_list) + plot_layout(guides = 'collect')
+wrap_plots(hm_list) + guide_area() + plot_layout(guides = 'collect')
 ggsave(paste0(results.dir, "/correlation_heatmap.png"),
-       width = 12,
+       width = 15,
        height = 12)
 ```
 
