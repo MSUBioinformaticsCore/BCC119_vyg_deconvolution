@@ -109,7 +109,7 @@ if(tool == "scdc"){
                                            cell_type_annotations = cell.type.annotations, 
                                            batch_ids = batch.ids,
                                            quality_control = TRUE,
-                                           ct_sub = colnames(seuratOb))
+                                           ct.sub = colnames(seuratOb))
   
   saveRDS(deconvolution, file = paste0(tool, "_deconvolution_withQC.rds"))
   
