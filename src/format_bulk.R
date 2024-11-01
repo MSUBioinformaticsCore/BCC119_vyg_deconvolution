@@ -11,7 +11,7 @@ bulk.mat = as.matrix(bulk[,c(12:34)])
 rownames(bulk.mat) = bulk$ensembl_gene_id
 
 # Load the gene lengths
-gene_lengths = read.delim(paste0(data.dir, "/gene_lengths_ROS_Cfam_1.0.113.txt"))
+gene_lengths = read.delim(paste0(data.dir, "/gene_lengths_Canis_lupus_familiaris.CanFam3.1.100.txt"))
 
 # Normalize counts
 keep_ids = intersect(bulk$ensembl_gene_id, gene_lengths$gene)
