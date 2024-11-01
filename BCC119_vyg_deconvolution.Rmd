@@ -40,12 +40,6 @@ cd $PROJECT/data/Ammons_scrna
 wget https://zenodo.org/records/10891255/files/canine_naive_n6_annotated.rds
 ```
 
-## Download gtf
-```{bash}
-cd $PROJECT/data
-wget https://ftp.ensembl.org/pub/release-113/gtf/canis_lupus_familiarisboxer/Canis_lupus_familiarisboxer.Dog10K_Boxer_Tasha.113.gtf.gz
-```
-
 ## Get gene lengths
 
 Using [gfttools](http://www.genemine.org/gtftools.php) 
@@ -55,9 +49,23 @@ module load Conda/3
 
 pip install gtftools
 
-gunzip Canis_lupus_familiarisboxer.Dog10K_Boxer_Tasha.113.gtf.gz
+cd $PROJECT/data
 
-gtftools -l gene_lengths.txt Canis_lupus_familiarisboxer.Dog10K_Boxer_Tasha.113.gtf
+gtftools -l  gene_lengths_Canis_lupus_familiaris.CanFam3.1.100.txt Canis_lupus_familiaris.CanFam3.1.100.gtf
+```
+
+## Normalize bulk data
+
+**script**
+
+**output**
+
+
+```{bash}
+module purge
+module load R-bundle-CRAN/2023.12-foss-2023a
+
+Rscript $PROJECT/src/format_bulk.R
 ```
 
 # Deconvolution analysis
@@ -65,297 +73,13 @@ gtftools -l gene_lengths.txt Canis_lupus_familiarisboxer.Dog10K_Boxer_Tasha.113.
 ```{bash, eval=FALSE}
 module purge
 module load R-bundle-CRAN/2023.12-foss-2023a
-R --vanilla
 ```
 
-## Set up
+## Deconvolution with DWLS and MuSiC using onmideconv
 
-Set paths
-```{r}
-data.dir = "/mnt/research/bioinformaticsCore/projects/Yuzbasiyan-Gurkan/BCC119_vyg_deconvolution/data"
+**script**
 
-results.dir = "/mnt/research/bioinformaticsCore/projects/Yuzbasiyan-Gurkan/BCC119_vyg_deconvolution/results"
-```
-
-Load the bulk RNA-seq data
-```{r}
-bulk = read.csv(paste0(data.dir, "/HS_MSU_RNAseq Analysis_rawCountsWithAnnotations.csv"))
-dim(bulk)
-```
-
-Load the gene lengths
-```{r}
-gene_lengths = read.delim(paste0(data.dir, "/gene_lengths.txt"))
-```
-
-Load the single-cell reference
-```{r}
-library(Seurat)
-
-seuratOb = readRDS(paste0(data.dir,"/Ammons_scrna/canine_naive_n6_annotated.rds"))
-seuratOb
-```
-
-How many genes are shared between the two data sets?
-```{r}
-sum(bulk$external_gene_name %in% rownames(seuratOb))
-```
-
-Format bulk data
-```{r}
-# identify rows with duplicated external_gene_name
-dups = bulk$external_gene_name[duplicated(bulk$external_gene_name)]
-
-# how many duplicated row names?  
-length(dups)
-
-# remove rows with duplicated external_gene_name
-bulk.nodups = 
-  bulk %>%
-  filter(!external_gene_name %in% dups)
-
-# select external_gene_name as rownames
-bulk.expr = bulk.nodups[,c(12:34)]
-rownames(bulk.expr) = bulk.nodups$external_gene_name
-
-bulk.mtx = as.matrix(bulk.expr)
-
-saveRDS(bulk.mtx, file = paste0(data.dir, "/bulk_count_mat.Rds"))
-
-# grab ensemble ids for genes in bulk mat
-keep_symbols = rownames(bulk.mtx)
-
-ids =
-  bulk %>%
-  filter(external_gene_name %in% keep_symbols) %>%
-  select(ensembl_gene_id, external_gene_name)
-
-identical(ids$external_gene_name, rownames(bulk.mtx))
-
-rownames(gene_lengths) = gene_lengths$gene
-
-keep_lengths = gene_lengths[ids$ensembl_gene_id,]
-identical(ids$ensembl_gene_id, rownames(keep_lengths))
-
-calculate_tpm <- function(count_matrix, gene_lengths) {
-  # Step 1: Calculate Reads Per Kilobase (RPK)
-  # Convert gene lengths from base pairs to kilobases for TPM calculation
-  gene_lengths_kb <- gene_lengths / 1000
-  
-  # Divide each count by gene length in kilobases
-  rpk <- sweep(count_matrix, 1, gene_lengths_kb, "/")
-  
-  # Step 2: Calculate the scaling factor (sum of RPKs per sample)
-  scaling_factor <- colSums(rpk)
-  
-  # Step 3: Calculate TPM
-  tpm <- sweep(rpk, 2, scaling_factor, "/") * 1e6
-  
-  return(tpm)
-}
-
-```
-
-## Deconvolution with MuSiC
-
-```{r}
-library(MuSiC)
-library(tidyverse)
-```
-
-MuSiC requires scRNA-seq reference data to be formatted as a `SingleCellExperiment`.
-```{r}
-library(SingleCellExperiment)
-
-# Seurat has a function for converting object type
-ref.sce = as.SingleCellExperiment(seuratOb)
-```
-
-### Estimate cell type proportions:
-
-The function `music_prop` provides output as a list with elements:
-
-* `Est.prop.weighted`: `data.frame` of MuSiC estimated proportions, subjects by cell types   
-* `Est.prop.allgene`: `data.frame` of NNLS estimated proportions, subjects by cell types   
-* `Weight.gene`: matrix, MuSiC estimated weight for each gene, genes by subjects   
-* `r.squared.full`: vector of R squared from MuSiC estimated proportions for each subject    
-* `Var.prop`: matrix of variance of MuSiC estimates   
-
-**results files:**
-
-* `music_results.Rdata`   
-* `music_proportions.csv`   
-* `music_proportions.png`    
-
-```{r}
-music.res =  music_prop(bulk.mtx = bulk.mtx, 
-                        sc.sce = ref.sce, 
-                        clusters = 'celltype.l1',
-                        samples = 'orig.ident')
-
-save(music.res, file = paste0(results.dir, "/music_results.Rdata"))
-
-write.csv(music.res$Est.prop.weighted, file = paste0(results.dir,"/music_proportions.csv"))
-
-# stacked bar
-res_df = as.data.frame(music.res$Est.prop.weighted)
-res_df$Samples =rownames(res_df)
-
-# res_df = rename(res_df, Samples = "X")
-
-music_long = 
-  res_df %>%
-  pivot_longer(cols = -Samples,
-               names_to = "CellType", 
-               values_to = "Proportion") %>%
-  mutate(Tool = "MuSiC",
-         CellType = gsub(" ", ".", CellType))
-
-# http://vrl.cs.brown.edu/color
-col20 = c("#4f8c9d", "#b9cf84", "#a84d64", "#7ed4d8", "#42455e", "#96ea4e", "#4b3596", "#39eec0", "#f92e5d", "#638123", "#5010c8", "#e4b5ff", "#b34a12", "#f1bb99", "#8d6cf6", "#20f53d", "#ea2db9", "#5281e3", "#31a62e", "#fd8992")
-
-ggplot(music_long, 
-       aes(x = Samples, 
-           y = Proportion, 
-           fill = CellType)) +
-  geom_col() +
-  scale_fill_manual(values = col20) +
-  theme_classic() +
-  coord_flip()
-
-ggsave(file = paste0(results.dir, "/music_proportions.png"))
-```
-
-## Deconvolution with SCDC
-
-```{r}
-library(Biobase)
-library(SCDC)
-```
-
-### Set up 
-
-`SCDC` takes `ExpressionSet` objects with raw read counts as input. It needs an `ExpressionSet` for each reference individual.
-
-Convert the bulk data to an `ExpressionSet`
-```{r}
-bulk.eset <- getESET(bulk.mtx,
-                     pdata = data.frame(Sample = colnames(bulk.mtx)),
-                     fdata = rownames(bulk.mtx))
-```
-
-Convert reference  `SeuratObject` into an `ExpressionSet` object.
-```{r}
-
-ref.eset <- getESET(seuratOb[["RNA"]]$counts,
-                    pdata = seuratOb@meta.data,
-                    fdata = rownames(seuratOb))
-
-```
-
-Reference QC
-```{r}
-all_types = unique(seuratOb@meta.data$celltype.l1)
-
-ref.qc <- SCDC_qc(ref.eset,
-                  ct.varname = "celltype.l1",
-                  sample = "orig.ident",
-                  qcthreshold = 0.7,
-                  ct.sub = as.character(all_types))
-
-save(ref.qc, file = paste0(results.dir, "/SCDC_QCdata.Rdata"))
-```
-
-### Estimate cell type proportions
-```{r}
-scdc.res = SCDC_prop(
-                  bulk.eset = bulk.eset,
-                  sc.eset = ref.qc$sc.eset.qc,
-                  ct.varname = "celltype.l1",
-                  sample = "orig.ident",
-                  ct.sub = as.character(all_types))
-
-save(scdc.res, file = paste0(results.dir, "/SCDC_res.Rdata"))
-write.csv(scdc.res$prop.est.mvw, file = paste0(results.dir,"/SCDC_proportions.csv"))
-
-# stacked bar
-res_df = as.data.frame(scdc.res$prop.est.mvw)
-res_df$Samples =rownames(res_df)
-
-# res_df = rename(res_df, Samples = "X")
-
-scdc_long = 
-  res_df %>%
-  pivot_longer(cols = -Samples,
-               names_to = "CellType", 
-               values_to = "Proportion") %>%
-  mutate(Tool = "SCDC",
-         CellType = gsub(" ", ".", CellType))
-
-ggplot(scdc_long, 
-       aes(x = Samples, 
-           y = Proportion, 
-           fill = CellType)) +
-  geom_col() +
-  scale_fill_manual(values = col20) +
-  theme_classic() +
-  coord_flip()
-
-ggsave(file = paste0(results.dir, "/SCDC_proportions.png"))
-```
-
-## Deconvolution with music and SCDC qc'd reference
-
-ExpressionSet -> SingleCellExperiment
-```{r}
-library(SummarizedExperiment)
-library(scater)
-
-ref.qc.counts = exprs(ref.qc$sc.eset.qc)
-ref.qc.pheno = pData(ref.qc$sc.eset.qc)
-
-ref.qc.sce <- SingleCellExperiment(list(counts=ref.qc.counts),
-                                colData=DataFrame(ref.qc.pheno))
-
-music.qc.res =  music_prop(bulk.mtx = bulk.mtx, 
-                           sc.sce = ref.qc.sce, 
-                           clusters = 'celltype.l1',
-                           samples = 'orig.ident')
-
-save(music.qc.res, file = paste0(results.dir, "/music.qc_results.Rdata"))
-
-write.csv(music.qc.res$Est.prop.weighted, file = paste0(results.dir,"/music.qc_proportions.csv"))
-
-# stacked bar
-res_df = as.data.frame(music.qc.res$Est.prop.weighted)
-res_df$Samples =rownames(res_df)
-
-# res_df = rename(res_df, Samples = "X")
-
-music.qc_long = 
-  res_df %>%
-  pivot_longer(cols = -Samples,
-               names_to = "CellType", 
-               values_to = "Proportion") %>%
-  mutate(Tool = "MuSiC.SCDC.qc",
-         CellType = gsub(" ", ".", CellType))
-
-# http://vrl.cs.brown.edu/color
-col20 = c("#4f8c9d", "#b9cf84", "#a84d64", "#7ed4d8", "#42455e", "#96ea4e", "#4b3596", "#39eec0", "#f92e5d", "#638123", "#5010c8", "#e4b5ff", "#b34a12", "#f1bb99", "#8d6cf6", "#20f53d", "#ea2db9", "#5281e3", "#31a62e", "#fd8992")
-
-ggplot(music.qc_long, 
-       aes(x = Samples, 
-           y = Proportion, 
-           fill = CellType)) +
-  geom_col() +
-  scale_fill_manual(values = col20) +
-  theme_classic() +
-  coord_flip()
-
-ggsave(file = paste0(results.dir, "/music.qc_proportions.png"))
-```
-
-# Use omnideconv
+**arguments**
 
 echo "omnideconv.R path:" $1
 echo "ref.seurat.path:" $2
@@ -365,148 +89,48 @@ echo "annotation.col:" $5
 echo "batch.col:" $6
 echo "results.dir:" $7
 
+**output**
+
 ```{bash}
 cd $PROJECT/run
 
-for tool in dwls #scaden scdc music
+for tool in music dwls 
 do
 
-sbatch $PROJECT/src/submit_omnideconv.sh \
-  $PROJECT/src/omnideconv.R \
-  $PROJECT/data/Ammons_scrna/canine_naive_n6_annotated.rds \
-  $PROJECT/data/bulk_count_mat.Rds \
-  $tool \
-  celltype.l1 \
-  orig.ident \
-  $PROJECT/results
+  echo $tool
+  
+  sbatch $PROJECT/src/submit_omnideconv.sh \
+    $PROJECT/src/omnideconv.R \
+    $PROJECT/data/Ammons_scrna/canine_naive_n6_annotated.rds \
+    $PROJECT/data/bulk_count_mat.Rds \
+    $tool \
+    celltype.l1 \
+    orig.ident \
+    $PROJECT/results
   
 done
   
 ```
 
-## Summary
-```{r}
-all_long = rbind(music_long, 
-                 music.qc_long, 
-                 scdc_long,
-                 fake_secret) 
-                 #secret_long)
+## Deconvolution with SCDC
 
-#rand_seq_empirical <- quantile(music_long$Proportion, 
-                               #probs = runif(length(music_long$Proportion)))
+**script**
 
-#fake_secret = 
-  #music_long %>%
-  #mutate(Tool = "Secret",
-        #Proportion = rand_seq_empirical)
+**arguments**
 
-# plot by tool, facet sample?
-ggplot(all_long, 
-       aes(x = Tool, 
-           y = Proportion, 
-           fill = CellType)) +
-  geom_col() +
-  scale_fill_manual(values = col20) +
-  theme_classic() +
-  coord_flip() +
-  facet_wrap(~Samples)
+echo "SCDC.R path:" $1
+echo "ref.seurat.path:" $2
+echo "bulk.mtx.path:" $3
+echo "tool:" $4
+echo "annotation.col:" $5
+echo "batch.col:" $6
+echo "results.dir:" $7
 
-ggsave(file = paste0(results.dir, "/all_tool_proportions.png"),
-       width = 15,
-       height = 10)
+**output**
 
-# pairwise correlations
-tools_wide = 
-  all_long %>%
-  pivot_wider(id_cols = c(Samples, CellType), 
-              names_from = Tool, 
-              values_from = Proportion)
+```{bash}
 
-write.csv(tools_wide, 
-          file = paste0(results.dir, "/proportions_all_tools.csv"),
-          row.names = FALSE)
-
-tools_wide = 
-  tools_wide %>%
-  select(-CellType)
-
-pairwise_correlations <- function(df, group_var) {
-  
-  
-  df %>%
-    # Group by the group_var (can be any variable like 'group', 'ID', etc.)
-    group_by({{ group_var }}) %>%
-    # Nest data by group to iterate over each group separately
-    nest() %>%
-    # Apply pairwise correlation within each group
-    mutate(cor_results = map(data, ~{
-      data <- .x
-      # Get variable names
-      var_names <- colnames(data)
-      # Get all pairwise combinations of variables
-      combs <- combn(var_names, 2, simplify = FALSE)
-      
-      # Perform pairwise correlations for all combinations
-      map_dfr(combs, function(pair) {
-        cor_test <- cor.test(data[[pair[1]]], data[[pair[2]]], use = "complete.obs")
-        tibble(
-          var1 = pair[1],
-          var2 = pair[2],
-          correlation = cor_test$estimate,
-          p_value = cor_test$p.value
-        )
-      })
-    })) %>%
-    # Unnest the correlation results to get a flat table
-    unnest(cor_results)
-}
-
-pw.result <- pairwise_correlations(tools_wide, group_var = Samples)
-
-library(RColorBrewer)
-library(hrbrthemes)
-library(patchwork)
-
-hm_list = list()
-rng = range(pw.result$correlation)
-
-# no x y labs
-# no grid lines
-# vertical x axis lab
-# smaller title
-# print rounded number in box
-
-for(s in unique(pw.result$Samples)){
-  
-  hm_list[[s]] = 
-    pw.result %>%
-    filter(Samples == s) %>%
-    mutate(CorrPrint = round(correlation, 2)) %>%
-    ggplot(aes(var1, var2, fill= correlation)) + 
-      geom_tile(color = "white") +
-      geom_text(aes(label = CorrPrint), 
-                color = "white",
-                size = 3) +
-      coord_equal() +
-      scale_fill_gradientn(colors = brewer.pal(9, "YlOrRd"),
-                           limits=c(floor(rng[1]), ceiling(rng[2]))) +
-      ggtitle(s) +
-      labs(x = NULL, y = NULL) +
-      theme_minimal() +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1),
-            panel.grid = element_blank(),
-            plot.title = element_text(size = 10, face = "bold")) 
-}
-
-wrap_plots(hm_list) + guide_area() + plot_layout(guides = 'collect')
-ggsave(paste0(results.dir, "/correlation_heatmap.png"),
-       width = 15,
-       height = 12)
 ```
 
 
-## Session info
-```{r}
-sessionInfo()
-```
 

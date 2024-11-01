@@ -26,6 +26,7 @@ seuratOb = readRDS(ref.seurat.path)
 
 
 # Subsample reference -----------------------------------------------------
+set.seed(1)
 
 max_cells_per_celltype = 200
 
@@ -69,61 +70,62 @@ if(tool == "dwls"){
 
 
 # scaden ------------------------------------------------------------------
-
-if(tool == "scaden"){
-  
-  single_cell_object <- as.matrix(single.cell.data.sampled[["RNA"]]$counts)
-  cell.type.annotations <- sampled.metadata %>% pull(all_of(annotation.col))
-  batch.ids <- sampled.metadata %>% pull(all_of(batch.col))
-  
-  signature <- omnideconv::build_model(single_cell_object = single_cell_object,
-                                       cell_type_annotations = cell.type.annotations,
-                                       batch_ids = batch.ids, 
-                                       method = "scaden", 
-                                       bulk_gene_expression = bulk.mtx,
-                                       verbose =TRUE)
-  
-  saveRDS(signature, file = paste0(tool, "_signature.rds"))
-  
-  deconvolution <- omnideconv::deconvolute(bulk_gene_expression = bulk.mtx, 
-                                           signature,
-                                           method = "scaden")
-  
-  saveRDS(deconvolution, file = paste0(tool, "_deconvolution.rds"))
-  
-}
+# can't get numpy to load properly
+# if(tool == "scaden"){
+#   
+#   single_cell_object <- as.matrix(single.cell.data.sampled[["RNA"]]$counts)
+#   cell.type.annotations <- sampled.metadata %>% pull(all_of(annotation.col))
+#   batch.ids <- sampled.metadata %>% pull(all_of(batch.col))
+#   
+#   signature <- omnideconv::build_model(single_cell_object = single_cell_object,
+#                                        cell_type_annotations = cell.type.annotations,
+#                                        batch_ids = batch.ids, 
+#                                        method = "scaden", 
+#                                        bulk_gene_expression = bulk.mtx,
+#                                        verbose =TRUE)
+#   
+#   saveRDS(signature, file = paste0(tool, "_signature.rds"))
+#   
+#   deconvolution <- omnideconv::deconvolute(bulk_gene_expression = bulk.mtx, 
+#                                            signature,
+#                                            method = "scaden")
+#   
+#   saveRDS(deconvolution, file = paste0(tool, "_deconvolution.rds"))
+#   
+# }
 
 
 # SCDC --------------------------------------------------------------------
-
-if(tool == "scdc"){
-  
-  single_cell_object <- as.matrix(seuratOb[["RNA"]]$counts)
-  cell.type.annotations <- seuratOb@meta.data %>% pull(all_of(annotation.col))
-  batch.ids <- seuratOb@meta.data %>% pull(all_of(batch.col))
-  
-
-  deconvolution <- omnideconv::deconvolute(bulk_gene_expression = bulk.mtx,
-                                           method = "scdc",
-                                           single_cell_object = single_cell_object, 
-                                           cell_type_annotations = cell.type.annotations, 
-                                           batch_ids = batch.ids,
-                                           quality_control = TRUE,
-                                           ct_sub = NULL)
-  
-  saveRDS(deconvolution, file = paste0(tool, "_deconvolution_withQC.rds"))
-  
-  deconvolution <- omnideconv::deconvolute(bulk_gene_expression = bulk.mtx,
-                                           method = "scdc",
-                                           single_cell_object = single_cell_object, 
-                                           cell_type_annotations = cell.type.annotations, 
-                                           batch_ids = batch.ids,
-                                           quality_control = FALSE,
-                                           ct_sub = NULL)
-  
-  saveRDS(deconvolution, file = paste0(tool, "_deconvolution_noQC.rds"))
-  
-}
+# issue with ct_sub vs ct.sub argument
+#
+# if(tool == "scdc"){
+#   
+#   single_cell_object <- as.matrix(seuratOb[["RNA"]]$counts)
+#   cell.type.annotations <- seuratOb@meta.data %>% pull(all_of(annotation.col))
+#   batch.ids <- seuratOb@meta.data %>% pull(all_of(batch.col))
+#   
+# 
+#   deconvolution <- omnideconv::deconvolute(bulk_gene_expression = bulk.mtx,
+#                                            method = "scdc",
+#                                            single_cell_object = single_cell_object, 
+#                                            cell_type_annotations = cell.type.annotations, 
+#                                            batch_ids = batch.ids,
+#                                            quality_control = TRUE,
+#                                            ct_sub = NULL)
+#   
+#   saveRDS(deconvolution, file = paste0(tool, "_deconvolution_withQC.rds"))
+#   
+#   deconvolution <- omnideconv::deconvolute(bulk_gene_expression = bulk.mtx,
+#                                            method = "scdc",
+#                                            single_cell_object = single_cell_object, 
+#                                            cell_type_annotations = cell.type.annotations, 
+#                                            batch_ids = batch.ids,
+#                                            quality_control = FALSE,
+#                                            ct_sub = NULL)
+#   
+#   saveRDS(deconvolution, file = paste0(tool, "_deconvolution_noQC.rds"))
+# 
+#}
 
 # music --------------------------------------------------------------------
 
