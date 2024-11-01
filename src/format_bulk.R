@@ -65,7 +65,7 @@ identical(keep_gene_names$ensembl_gene_id, rownames(tpm.nodups))
 tpm.nodups.symbol = tpm.nodups
 rownames(tpm.nodups.symbol) = keep_gene_names$external_gene_name
 
-saveRDS(tpm.nodups.symbol,  file = paste0(data.dir,"bulk_tpm_mat.Rds"))
+saveRDS(tpm.nodups.symbol,  file = paste0(data.dir,"/bulk_tpm_mat.Rds"))
 
 
 
