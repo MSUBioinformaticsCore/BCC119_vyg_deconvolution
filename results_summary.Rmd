@@ -19,7 +19,7 @@ pre, code {white-space:pre !important; overflow-x:auto}
 
 # Project Summary
 
-Here we use single-cell RNA-seq data from primary osteosarcoma in 6 treatment-naïve dogs ([Ammons et al, Commun Biol. 2024 Apr 24](https://www.nature.com/articles/s42003-024-06182-w)) as a reference data set to estimate immune cell proportions in bulk tumor samples using parallel methods [MuSiC](https://xuranw.github.io/MuSiC/articles/MuSiC.html) and [SCDC]().
+Here we use single-cell RNA-seq data from primary osteosarcoma in 6 treatment-naïve dogs ([Ammons et al, Commun Biol. 2024 Apr 24](https://www.nature.com/articles/s42003-024-06182-w)) as a reference data set to estimate immune cell proportions in bulk tumor samples using parallel methods [MuSiC](https://xuranw.github.io/MuSiC/articles/MuSiC.html), [SCDC](), and [DWLS](https://cran.r-project.org/web/packages/DWLS/index.html).
 
 The following cell types are included in the reference data:
 
@@ -44,37 +44,72 @@ The following cell types are included in the reference data:
   19. Mast cell   
   20. TIM   
 
-Both MuSiC and SCDC take advantage of multi-subject reference data sets by appropriately weighting genes showing cross-subject and cross-cell consistency.
-
-barplot one tool
+Both MuSiC and SCDC are commonly used tools that take advantage of multi-subject reference data sets by appropriately weighting genes showing cross-subject and cross-cell consistency, though they use slightly different algorithms. DWLS is a newer tool that shows improved performance compared with MuSiC and SCDC using a single-subject reference in a recent [benchmarking study](https://www.biorxiv.org/content/10.1101/2024.06.10.598226v1.full). 
 ```{r}
-# stacked bar
-res_df = as.data.frame(music.res$Est.prop.weighted)
-res_df$Samples =rownames(res_df)
+# load libraries
+library(tidyverse)
+library(patchwork)
+library(RColorBrewer)
 
-# res_df = rename(res_df, Samples = "X")
+# set paths 
+data.dir = "/mnt/research/bioinformaticsCore/projects/Yuzbasiyan-Gurkan/BCC119_vyg_deconvolution/data"
 
-music_long = 
-  res_df %>%
-  pivot_longer(cols = -Samples,
-               names_to = "CellType", 
-               values_to = "Proportion") %>%
-  mutate(Tool = "MuSiC",
-         CellType = gsub(" ", ".", CellType))
+results.dir = "/mnt/research/bioinformaticsCore/projects/Yuzbasiyan-Gurkan/BCC119_vyg_deconvolution/results"
 
-# http://vrl.cs.brown.edu/color
-col20 = c("#4f8c9d", "#b9cf84", "#a84d64", "#7ed4d8", "#42455e", "#96ea4e", "#4b3596", "#39eec0", "#f92e5d", "#638123", "#5010c8", "#e4b5ff", "#b34a12", "#f1bb99", "#8d6cf6", "#20f53d", "#ea2db9", "#5281e3", "#31a62e", "#fd8992")
+# load cell type proportions
+dwls_prop = readRDS(paste0(results.dir, "/dwls_deconvolution.rds"))
+music_prop = readRDS(paste0(results.dir, "/music_deconvolution.rds"))
 
-ggplot(music_long, 
-       aes(x = Samples, 
-           y = Proportion, 
-           fill = CellType)) +
-  geom_col() +
-  scale_fill_manual(values = col20) +
-  theme_classic() +
-  coord_flip()
+load(paste0(results.dir, "/SCDC_res.Rdata"))
+scdc_prop = scdc.res$prop.est.mvw
 
-ggsave(file = paste0(results.dir, "/music_proportions.png"))
+make_long = function(wide_mat, tool){
+  
+  wide_df = as.data.frame(wide_mat)
+  wide_df$Samples = rownames(wide_df)
+  
+  long_df = 
+    wide_df %>%
+    pivot_longer(cols = -Samples,
+                names_to = "CellType", 
+                values_to = "Proportion") %>%
+    mutate(Tool = tool,
+          CellType = gsub(" ", ".", CellType))
+  
+  return(long_df)
+}
+
+plot_propotions = function(long_df, tool){
+  
+  # http://vrl.cs.brown.edu/color
+  col20 = c("#4f8c9d", "#b9cf84", "#a84d64", "#7ed4d8",
+            "#42455e", "#96ea4e", "#4b3596", "#39eec0",
+            "#f92e5d", "#638123", "#5010c8", "#e4b5ff",
+            "#b34a12", "#f1bb99", "#8d6cf6", "#20f53d", 
+            "#ea2db9", "#5281e3", "#31a62e", "#fd8992")
+
+  ggplot(long_df, 
+        aes(x = Samples, 
+            y = Proportion, 
+            fill = CellType)) +
+    geom_col() +
+    ggtitle(tool) + 
+    scale_fill_manual(values = col20) +
+    theme_classic() +
+    coord_flip()
+  
+  ggsave(file = paste0(results.dir, "/", tool, "_proportions.png"))
+  
+}
+
+dwls_long = make_long(dwls_prop, "DWLS")
+plot_propotions(dwls_long, "DWLS")
+
+music_long = make_long(music_prop, "MuSiC")
+plot_propotions(music_long, "MuSiC")
+
+cdc_long = make_long(scdc_prop, "SCDC")
+plot_propotions(cdc_long, "SCDC")
 ```
 
 all
@@ -86,14 +121,6 @@ all_long = rbind(music_long,
                  scdc_long,
                  fake_secret) 
                  #secret_long)
-
-#rand_seq_empirical <- quantile(music_long$Proportion, 
-                               #probs = runif(length(music_long$Proportion)))
-
-#fake_secret = 
-  #music_long %>%
-  #mutate(Tool = "Secret",
-        #Proportion = rand_seq_empirical)
 
 # plot by tool, facet sample?
 ggplot(all_long, 

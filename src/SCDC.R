@@ -1,62 +1,72 @@
-## Deconvolution with SCDC
+# Load required libraries
+library(Biobase)      # For creating ExpressionSet objects
+library(SCDC)         # For single-cell deconvolution
+library(Seurat)       # For handling Seurat single-cell objects
+library(tidyverse)    # For data manipulation
 
-library(Biobase)
-library(SCDC)
-library(Seurat)
-library(tidyverse)
-
+# Capture command line arguments
 args <- commandArgs(TRUE)
 
-ref.seurat.path = args[1] 
-bulk.mtx.path = args[2]
-tool = args[3]
-annotation.col = args[4]
-batch.col = args[5]
-results.dir = args[6]
-
-# Set paths
-data.dir = "/mnt/research/bioinformaticsCore/projects/Yuzbasiyan-Gurkan/BCC119_vyg_deconvolution/data"
-results.dir = "/mnt/research/bioinformaticsCore/projects/Yuzbasiyan-Gurkan/BCC119_vyg_deconvolution/results"
-
+# Define paths and parameters from command-line arguments
+ref.seurat.path = args[1]        # Path to Seurat reference data
+bulk.mtx.path = args[2]          # Path to bulk RNA-seq data
+tool = args[3]                   # Tool to be used (in this case, 'scdc')
+annotation.col = args[4]         # Column with cell type annotations
+batch.col = args[5]              # Column with batch information
+results.dir = args[6]            # Directory for output results
 
 # Load the bulk RNA-seq data
 bulk.mtx = readRDS(bulk.mtx.path)
 
-# Load the single-cell reference
+# Load the single-cell Seurat reference object
 seuratOb = readRDS(ref.seurat.path)
 
-# `SCDC` takes `ExpressionSet` objects with raw read counts as input. 
-# It needs an `ExpressionSet` for each reference individual.
-# Convert the bulk data to an `ExpressionSet`
+# Convert bulk RNA-seq data to ExpressionSet ------------------------------
 
-bulk.eset <- getESET(bulk.mtx,
-                     pdata = data.frame(Sample = colnames(bulk.mtx)),
-                     fdata = rownames(bulk.mtx))
+# `SCDC` requires an ExpressionSet for bulk data, which includes sample and feature metadata.
+bulk.eset <- getESET(
+  bulk.mtx,
+  pdata = data.frame(Sample = colnames(bulk.mtx)),  # Sample metadata
+  fdata = rownames(bulk.mtx)                        # Feature metadata (gene names)
+)
 
-# Convert reference  `SeuratObject` into an `ExpressionSet` object.
+# Convert reference Seurat object to ExpressionSet ------------------------
 
-ref.eset <- getESET(seuratOb[["RNA"]]$counts,
-                    pdata = seuratOb@meta.data,
-                    fdata = rownames(seuratOb))
+# Convert the single-cell RNA count data from Seurat to ExpressionSet
+ref.eset <- getESET(
+  seuratOb[["RNA"]]$counts,       # RNA count data from Seurat object
+  pdata = seuratOb@meta.data,     # Metadata for cells
+  fdata = rownames(seuratOb)      # Feature data (gene names)
+)
 
-# Reference QC
+# Reference Quality Control (QC) ------------------------------------------
+
+# Extract cell type annotations from the metadata and identify unique cell types
 cell.type.annotations <- seuratOb@meta.data %>% pull(all_of(annotation.col))
 all_types = unique(cell.type.annotations)
 
-ref.qc <- SCDC_qc(ref.eset,
-                  ct.varname = annotation.col,
-                  sample = batch.col,
-                  qcthreshold = 0.5,
-                  ct.sub = as.character(all_types))
+# Perform QC on the reference data using SCDC's quality control function
+ref.qc <- SCDC_qc(
+  ref.eset,
+  ct.varname = annotation.col,  # Column with cell type information
+  sample = batch.col,           # Column with batch information
+  qcthreshold = 0.5,            # QC threshold for filtering
+  ct.sub = as.character(all_types) # List of cell types to include
+)
 
+# Save QC-processed reference data
 save(ref.qc, file = paste0(results.dir, "/SCDC_QCdata.Rdata"))
 
-### Estimate cell type proportions
-scdc.res = SCDC_prop(
-  bulk.eset = bulk.eset,
-  sc.eset = ref.qc$sc.eset.qc,
-  ct.varname = annotation.col,
-  sample = batch.col,
-  ct.sub = as.character(all_types))
+# Estimate Cell Type Proportions ------------------------------------------
 
+# Run SCDC to estimate cell type proportions in the bulk data
+scdc.res = SCDC_prop(
+  bulk.eset = bulk.eset,                # Bulk ExpressionSet
+  sc.eset = ref.qc$sc.eset.qc,          # Quality-controlled reference ExpressionSet
+  ct.varname = annotation.col,          # Cell type column in metadata
+  sample = batch.col,                   # Batch information column
+  ct.sub = as.character(all_types)      # Cell types to include in estimation
+)
+
+# Save the estimated cell type proportions
 save(scdc.res, file = paste0(results.dir, "/SCDC_res.Rdata"))
