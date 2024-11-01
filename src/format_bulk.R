@@ -58,7 +58,7 @@ keep_gene_names =
   bulk.nodups %>%
   filter(ensembl_gene_id %in% keep_ids) %>%
   select(ensembl_gene_id, external_gene_name) %>%
-  arrange(ensembl_gene_id) %>%
+  arrange(ensembl_gene_id) 
 
 identical(keep_gene_names$ensembl_gene_id, rownames(tpm.nodups))
 
