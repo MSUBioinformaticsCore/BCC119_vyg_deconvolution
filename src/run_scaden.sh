@@ -35,7 +35,7 @@ module load Conda/3
 #   --data $ref_dir \
 #   --pattern $ref_pattern 
 # 
-# cd $ref_dir
+cd $ref_dir
 # 
 # scaden process *.h5ad $bulk
 

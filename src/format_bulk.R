@@ -83,4 +83,8 @@ saveRDS(tpm.nodups.symbol,  file = paste0(data.dir,"/bulk_tpm_mat.Rds"))
 
 # save as text for scaden
 
-
+write.table(tpm.nodups.symbol,
+            file = paste0(data.dir,"/bulk_tpm_mat.txt"),
+            sep = "\t",
+            quote = FALSE,
+            row.names = TRUE)
