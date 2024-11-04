@@ -82,9 +82,23 @@ saveRDS(tpm.nodups.symbol,  file = paste0(data.dir,"/bulk_tpm_mat.Rds"))
 
 
 # save as text for scaden
-
 write.table(tpm.nodups.symbol,
             file = paste0(data.dir,"/bulk_tpm_mat.txt"),
+            sep = "\t",
+            quote = FALSE,
+            row.names = TRUE)
+
+# normalize pseudobulk
+pseudobulk_tpm_mat.txt
+
+
+# Save the processed TPM matrix as an RDS file
+saveRDS(pseudo.tpm.nodups.symbol,  file = paste0(data.dir,"/Ammons_scrna/pseudobulk_tpm_mat.Rds"))
+
+
+# save as text for scaden
+write.table(pseudo.tpm.nodups.symbol,
+            file = paste0(data.dir,"/Ammons_scrna/pseudobulk_tpm_mat.txt"),
             sep = "\t",
             quote = FALSE,
             row.names = TRUE)

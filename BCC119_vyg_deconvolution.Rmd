@@ -54,7 +54,19 @@ cd $PROJECT/data
 gtftools -l  gene_lengths_Canis_lupus_familiaris.CanFam3.1.100.txt Canis_lupus_familiaris.CanFam3.1.100.gtf
 ```
 
-## Normalize bulk data
+## Make random pseuodbulk samples
+
+**script**
+
+**arguments**
+
+**output**
+
+```{bash}
+
+```
+
+## Normalize bulk and pseudobulk data
 
 **script**
 
@@ -66,6 +78,10 @@ module purge
 module load R-bundle-CRAN/2023.12-foss-2023a
 
 Rscript $PROJECT/src/format_bulk.R
+```
+
+```{bash}
+
 ```
 
 # Deconvolution analysis
@@ -109,6 +125,25 @@ do
     $PROJECT/results
   
 done
+
+# pseudobulk
+mkdir $PROJECT/results/pseudobulk
+
+for tool in music dwls 
+do
+
+  echo $tool
+  
+  sbatch $PROJECT/src/submit_omnideconv.sh \
+    $PROJECT/src/omnideconv.R \
+    $PROJECT/data/Ammons_scrna/canine_naive_n6_annotated.rds \
+    $PROJECT/data/Ammons_scrna/pseudobulk_tpm_mat.Rds \
+    $tool \
+    celltype.l1 \
+    orig.ident \
+    $PROJECT/results/pseudobulk
+  
+done
   
 ```
 
@@ -138,12 +173,42 @@ sbatch $PROJECT/src/submitSCDC.sh \
   celltype.l1 \
   orig.ident \
   $PROJECT/results
+
+# pseudobulk
+sbatch $PROJECT/src/submitSCDC.sh \
+  $PROJECT/src/SCDC.R \
+  $PROJECT/data/Ammons_scrna/canine_naive_n6_annotated.rds \
+  $PROJECT/data/Ammons_scrna/pseudobulk_tpm_mat.Rds \
+  $tool \
+  celltype.l1 \
+  orig.ident \
+  $PROJECT/results/pseuobulk
     
 ```
 
 ## Deconvolution with scaden
 
-### Prep single cell data
+echo "bulk.mtx.path:" $1
+echo "ref.data.dir:" $2
+echo "ref.data.pattern:" $3
+echo "results.dir:" $4
 
-### Run scaden
+```{bash}
+cd $PROJECT/run
 
+# real bulk
+sbatch $PROJECT/src/run_scaden.sh \
+  $PROJECT/data/bulk_tpm_mat.txt \
+  $PROJECT/data/Ammons_scrna/for_scaden \
+  "*_cpm.txt" \
+  $PROEJCT/results
+
+module purge
+module load Conda/3
+
+# pseudobulk with same model
+scaden predict \
+  --model_dir $PROJECT/data/Ammons_scrna/for_scaden \
+  --outname $PROEJCT/results/pseudobulk/scaden_proportions.txt \
+  $PROJECT/data/Ammons_scrna/pseudobulk_tpm_mat.txt
+```

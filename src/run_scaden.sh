@@ -34,16 +34,21 @@ module load Conda/3
 #   --out $ref_dir \
 #   --data $ref_dir \
 #   --pattern $ref_pattern 
-# 
+
 cd $ref_dir
-# 
-# scaden process *.h5ad $bulk
+
+ref_file=$(ls $ref_pattern)
+ref_prefix=${ref_file%$ref_pattern}
+
+scaden process ${ref_prefix}.h5ad $bulk
 
 scaden train processed.h5ad
 
 scaden predict \
-  scaden_predictions.txt \
-  --outname ${res_dir}/scaden_proportions.txt
+  --model_dir $ref_dir \
+  --outname ${res_dir}/scaden_proportions.txt \
+  $bulk
+
 
 
 
