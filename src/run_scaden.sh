@@ -30,10 +30,10 @@ res_dir=$4
 module purge
 module load Conda/3
 
-# scaden simulate \
-#   --out $ref_dir \
-#   --data $ref_dir \
-#   --pattern $ref_pattern 
+scaden simulate \
+  --out $ref_dir \
+  --data $ref_dir \
+  --pattern $ref_pattern
 
 cd $ref_dir
 
