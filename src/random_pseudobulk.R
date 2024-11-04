@@ -1,10 +1,14 @@
 # Load required libraries
 library(Seurat)
-library(dplyr)
+library(tidyverse)
 
 ref.seurat.path = args[1]            # Path to Seurat reference data
 annotation.col = args[2]             # Column with cell type annotations
 pseudo.dir = args[3]                 # Directory for results output
+
+# ref.seurat.path = "/mnt/research/bioinformaticsCore/projects/Yuzbasiyan-Gurkan/BCC119_vyg_deconvolution/data/Ammons_scrna/can"
+# annotation.col = "celltype.l1"
+# pseudo.dir = "/mnt/research/bioinformaticsCore/projects/Yuzbasiyan-Gurkan/BCC119_vyg_deconvolution/data/Ammons_scrna/pseudobulk"
 
 # Assume `seurat_obj` is your Seurat object with:
 # - RNA counts in the "RNA" assay
@@ -64,6 +68,7 @@ pseudobulk_data <- vector("list", num_datasets)
 # Generate pseudobulk datasets and store cell type proportions
 
 for (i in 1:num_datasets) {
+  print(i)
   set.seed(i)
   pseudobulk_data[[i]] <- generate_pseudobulk_with_proportions(seurat_obj, cells_per_sample)
 }
@@ -74,12 +79,35 @@ colnames(pseudobulk_counts_matrix) <- paste0("Pseudobulk_", 1:num_datasets)
 
 # Extract cell type proportions into a separate data frame
 # fix missing values
-cell_type_proportions_df <- bind_rows(lapply(pseudobulk_data, function(x) as.data.frame(t(x$cell_type_proportions))))
+cell_type_proportions_df <- lapply(pseudobulk_data, function(x) 
+  as.data.frame((x$cell_type_proportions)) %>%
+    colnames())
 
-colnames(cell_type_proportions_df) <- paste0("Pseudobulk_", 1:num_datasets)
+cell_type_proportions_list = list()
 
-# Save results as RDS files or convert to Seurat objects if needed
+for(i in 1:num_datasets){
+  
+  cell_type_proportions_list[[i]] = as.data.frame((pseudobulk_data[[i]]$cell_type_proportions))
+  colnames(cell_type_proportions_list[[i]]) = c("CellType", "Proportion")
+  cell_type_proportions_list[[i]]$Sample = paste0("Pseudobulk_", i)
+}
+
+cell_type_proportions_df =
+  do.call(rbind, cell_type_proportions_list) %>%
+  pivot_wider(id_cols = Sample,
+              names_from = CellType, 
+              values_from = Proportion,
+              values_fill = 0)
+
+# Save results as RDS files or text objects if needed
 saveRDS(pseudobulk_counts_matrix, file = paste0(pseudo.dir, "/pseudobulk_counts_matrix.rds"))
-saveRDS(cell_type_proportions_df, file = paste0(pseudo.dir, "/pseudobulk_cell_type_proportions.rds"))
+
+write.table(pseudobulk_counts_matrix, 
+            file = paste0(pseudo.dir, "/pseudobulk_counts_matrix.txt"),
+            sep = "/t",
+            quote = F,
+            row.names = TRUE)
+
+saveRDS(cell_type_proportions_df, file = paste0(pseudo.dir, "/pseudobulk_real_cell_type_proportions.rds"))
 
 
