@@ -80,7 +80,6 @@ rownames(tpm.nodups.symbol) = keep_gene_names$external_gene_name
 # Save the processed TPM matrix as an RDS file
 saveRDS(tpm.nodups.symbol,  file = paste0(data.dir,"/bulk_tpm_mat.Rds"))
 
-
 # save as text for scaden
 write.table(tpm.nodups.symbol,
             file = paste0(data.dir,"/bulk_tpm_mat.txt"),
@@ -88,17 +87,19 @@ write.table(tpm.nodups.symbol,
             quote = FALSE,
             row.names = TRUE)
 
-# normalize pseudobulk
-pseudobulk_tpm_mat.txt
+# filter pseudobulk genes for genes present in bulk
+# don't tmp norm because 10x data is 3 prime biased
+pseudobulk_counts_matrix = readRDS(paste0(data.dir,"/Ammons_scrna/pseudobulk/pseudobulk_counts_matrix.rds"))
+keep_pseudobulk_genes = intersect(keep_gene_names$external_gene_name, rownames(pseudobulk_counts_matrix))
 
+pseudobulk_filt_matrix = pseudobulk_counts_matrix[keep_pseudobulk_genes,]
 
 # Save the processed TPM matrix as an RDS file
-saveRDS(pseudo.tpm.nodups.symbol,  file = paste0(data.dir,"/Ammons_scrna/pseudobulk_tpm_mat.Rds"))
-
+saveRDS(pseudobulk_filt_matrix,  file = paste0(data.dir,"/Ammons_scrna/pseudobulk/pseudobulk_filtered_genes_counts_matrix.rds"))
 
 # save as text for scaden
-write.table(pseudo.tpm.nodups.symbol,
-            file = paste0(data.dir,"/Ammons_scrna/pseudobulk_tpm_mat.txt"),
+write.table(pseudobulk_filt_matrix,
+            file = paste0(data.dir,"/Ammons_scrna/pseudobulk/pseudobulk_filtered_genes_counts_matrix.txt"),
             sep = "\t",
             quote = FALSE,
             row.names = TRUE)
