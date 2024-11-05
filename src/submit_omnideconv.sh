@@ -2,7 +2,7 @@
 #SBATCH --mem=100GB
 #SBATCH --job-name=omnideconv
 #SBATCH --output=%x-%j.out
-#SBATCH --time=4:00:00
+#SBATCH --time=12:00:00
 #SBATCH --nodes=1
 #SBATCH --account=bioinformaticscore
 #SBATCH --constrain=intel18
