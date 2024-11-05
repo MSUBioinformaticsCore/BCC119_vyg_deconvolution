@@ -53,25 +53,24 @@ To test how well these tools work with this reference data set, I created 100 ps
 library(tidyverse)
 library(patchwork)
 library(RColorBrewer)
+library(ggpubr)
 
 # set paths 
 data.dir = "/mnt/research/bioinformaticsCore/projects/Yuzbasiyan-Gurkan/BCC119_vyg_deconvolution/data"
-
 results.dir = "/mnt/research/bioinformaticsCore/projects/Yuzbasiyan-Gurkan/BCC119_vyg_deconvolution/results"
-```
 
+dwls_pseudo = readRDS(paste0(results.dir, "/pseudobulk/dwls_deconvolution.rds"))
+music_pseudo = readRDS(paste0(results.dir, "/pseudobulk/music_deconvolution.rds"))
+scaden_pseudo = read.delim(paste0(results.dir, "/pseudobulk/scaden_proportions.txt"), row.names = 1)
 
+load(paste0(results.dir, "/pseudobulk/SCDC_res.Rdata"))
+scdc_pseudo = scdc.res$prop.est.mvw
 
-```{r}
-# load predicted cell type proportions
-dwls_prop = readRDS(paste0(results.dir, "/dwls_deconvolution.rds"))
-music_prop = readRDS(paste0(results.dir, "/music_deconvolution.rds"))
-scaden_prop = read.delim(paste0(results.dir, "/scaden_proportions.txt"))
-
-
-load(paste0(results.dir, "/SCDC_res.Rdata"))
-scdc_prop = scdc.res$prop.est.mvw
-
+ground_truth = readRDS(paste0(data.dir, "/Ammons_scrna/pseudobulk/pseudobulk_real_cell_type_proportions.rds"))
+samples = ground_truth$Sample
+ground_truth$Sample = NULL
+ground_truth = as.matrix(ground_truth)
+rownames(ground_truth) = samples
 
 make_long = function(wide_mat, tool){
   
@@ -112,25 +111,99 @@ plot_propotions = function(long_df, tool){
   
 }
 
+dwls_long = make_long(dwls_pseudo, "DWLS_predicted")
+music_long = make_long(music_pseudo, "MuSiC_predicted")
+scdc_long = make_long(scdc_pseudo, "SCDC_predicted")
+scaden_long = make_long(scaden_pseudo, "scaden_predicted")
+ground_long = make_long(ground_truth, "ground_truth")
+
+all_pseudo = rbind(dwls_long, 
+                   music_long,
+                   scdc_long,
+                   ground_long)
+
+# plot correlations
+
+truth_corr =   
+all_pseudo %>%
+  pivot_wider(id_cols = c(Samples, CellType), 
+              names_from = Tool, 
+              values_from = Proportion) %>%
+    # Group by the group_var (can be any variable like 'group', 'ID', etc.)
+    group_by(Samples) %>%
+    # Nest data by group to iterate over each group separately
+    nest() %>%
+    # Apply pairwise correlation within each group
+    mutate(cor_results = map(data, ~{
+      data <- .x
+      # Get variable names
+      var_names <- colnames(data)
+      # Get all pairwise combinations of variables
+      tools = unique(all_pseudo$Tool)
+      combs <- combn(tools, 2, simplify = FALSE)
+      combs_keep = keep(combs, function(x) "ground_truth" %in% x)
+      # Perform pairwise correlations for all combinations
+      map_dfr(combs_keep, function(pair) {
+        cor_test <- cor.test(data[[pair[1]]], data[[pair[2]]], use = "complete.obs")
+        tibble(
+          var1 = pair[1],
+          var2 = pair[2],
+          correlation = cor_test$estimate,
+          p_value = cor_test$p.value
+        )
+      })
+    })) %>%
+    # Unnest the correlation results to get a flat table
+    unnest(cor_results)
+
+ggplot(truth_corr, aes(x = var1, y = correlation)) +
+  geom_boxplot() +
+  xlab("Tool used for prediction") +
+  ylab("Correlation with ground truth") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        plot.title = element_text(size = 10, face = "bold")) +
+  theme_classic()
+
+knitr::kable(truth_corr %>%
+               select(var1, correlation) %>%
+               ungroup() %>%
+               group_by(var1) %>%
+               summarize(MedianCorrelation = median(correlation),
+                         MeanCorrelation = mean(correlation)))
+  
+```
+
+
+
+
+```{r}
+# load predicted cell type proportions
+dwls_prop = readRDS(paste0(results.dir, "/dwls_deconvolution.rds"))
+music_prop = readRDS(paste0(results.dir, "/music_deconvolution.rds"))
+scaden_prop = read.delim(paste0(results.dir, "/scaden_proportions.txt"), row.names = 1)
+
+load(paste0(results.dir, "/SCDC_res.Rdata"))
+scdc_prop = scdc.res$prop.est.mvw
+
 dwls_long = make_long(dwls_prop, "DWLS")
 plot_propotions(dwls_long, "DWLS")
 
 music_long = make_long(music_prop, "MuSiC")
 plot_propotions(music_long, "MuSiC")
 
-cdc_long = make_long(scdc_prop, "SCDC")
-plot_propotions(cdc_long, "SCDC")
-```
+scdc_long = make_long(scdc_prop, "SCDC")
+plot_propotions(scdc_long, "SCDC")
 
-all
+scaden_long = make_long(scaden_prop, "scaden")
+plot_propotions(scaden_long, "scaden")
+```
 
 ## Summary
 ```{r}
 all_long = rbind(music_long, 
-                 music.qc_long, 
+                 dwls_long, 
                  scdc_long,
-                 fake_secret) 
-                 #secret_long)
+                 scaden_long)
 
 # plot by tool, facet sample?
 ggplot(all_long, 
@@ -147,93 +220,6 @@ ggsave(file = paste0(results.dir, "/all_tool_proportions.png"),
        width = 15,
        height = 10)
 
-# pairwise correlations
-tools_wide = 
-  all_long %>%
-  pivot_wider(id_cols = c(Samples, CellType), 
-              names_from = Tool, 
-              values_from = Proportion)
-
-write.csv(tools_wide, 
-          file = paste0(results.dir, "/proportions_all_tools.csv"),
-          row.names = FALSE)
-
-tools_wide = 
-  tools_wide %>%
-  select(-CellType)
-
-pairwise_correlations <- function(df, group_var) {
-  
-  
-  df %>%
-    # Group by the group_var (can be any variable like 'group', 'ID', etc.)
-    group_by({{ group_var }}) %>%
-    # Nest data by group to iterate over each group separately
-    nest() %>%
-    # Apply pairwise correlation within each group
-    mutate(cor_results = map(data, ~{
-      data <- .x
-      # Get variable names
-      var_names <- colnames(data)
-      # Get all pairwise combinations of variables
-      combs <- combn(var_names, 2, simplify = FALSE)
-      
-      # Perform pairwise correlations for all combinations
-      map_dfr(combs, function(pair) {
-        cor_test <- cor.test(data[[pair[1]]], data[[pair[2]]], use = "complete.obs")
-        tibble(
-          var1 = pair[1],
-          var2 = pair[2],
-          correlation = cor_test$estimate,
-          p_value = cor_test$p.value
-        )
-      })
-    })) %>%
-    # Unnest the correlation results to get a flat table
-    unnest(cor_results)
-}
-
-pw.result <- pairwise_correlations(tools_wide, group_var = Samples)
-
-library(RColorBrewer)
-library(hrbrthemes)
-library(patchwork)
-
-hm_list = list()
-rng = range(pw.result$correlation)
-
-# no x y labs
-# no grid lines
-# vertical x axis lab
-# smaller title
-# print rounded number in box
-
-for(s in unique(pw.result$Samples)){
-  
-  hm_list[[s]] = 
-    pw.result %>%
-    filter(Samples == s) %>%
-    mutate(CorrPrint = round(correlation, 2)) %>%
-    ggplot(aes(var1, var2, fill= correlation)) + 
-      geom_tile(color = "white") +
-      geom_text(aes(label = CorrPrint), 
-                color = "white",
-                size = 3) +
-      coord_equal() +
-      scale_fill_gradientn(colors = brewer.pal(9, "YlOrRd"),
-                           limits=c(floor(rng[1]), ceiling(rng[2]))) +
-      ggtitle(s) +
-      labs(x = NULL, y = NULL) +
-      theme_minimal() +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1),
-            panel.grid = element_blank(),
-            plot.title = element_text(size = 10, face = "bold")) 
-}
-
-wrap_plots(hm_list) + guide_area() + plot_layout(guides = 'collect')
-ggsave(paste0(results.dir, "/correlation_heatmap.png"),
-       width = 15,
-       height = 12)
 ```
 
 
