@@ -94,7 +94,7 @@ keep_pseudobulk_genes = intersect(keep_gene_names$external_gene_name, rownames(p
 
 pseudobulk_filt_matrix = pseudobulk_counts_matrix[keep_pseudobulk_genes,]
 
-# Save the processed TPM matrix as an RDS file
+# Save the matrix as an RDS file
 saveRDS(pseudobulk_filt_matrix,  file = paste0(data.dir,"/Ammons_scrna/pseudobulk/pseudobulk_filtered_genes_counts_matrix.rds"))
 
 # save as text for scaden

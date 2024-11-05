@@ -5,6 +5,8 @@ library(tidyverse)
 ref.seurat.path = args[1]            # Path to Seurat reference data
 annotation.col = args[2]             # Column with cell type annotations
 pseudo.dir = args[3]                 # Directory for results output
+num_datasets = args[4]               # Number of pseudobulk datasets to create
+cells_per_sample = args[5]           # Number of cells per pseudobulk dataset
 
 # ref.seurat.path = "/mnt/research/bioinformaticsCore/projects/Yuzbasiyan-Gurkan/BCC119_vyg_deconvolution/data/Ammons_scrna/can"
 # annotation.col = "celltype.l1"
@@ -13,8 +15,7 @@ pseudo.dir = args[3]                 # Directory for results output
 # Assume `seurat_obj` is your Seurat object with:
 # - RNA counts in the "RNA" assay
 # - Cell types labeled in the `CellType` metadata column
-num_datasets <- 100          # Number of pseudobulk datasets to create
-cells_per_sample <- 10000     # Number of cells per pseudobulk dataset
+
 
 seurat_obj = readRDS(ref.seurat.path)
 
