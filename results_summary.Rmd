@@ -119,7 +119,7 @@ ground_long = make_long(ground_truth, "ground_truth")
 
 all_pseudo = rbind(dwls_long, 
                    music_long,
-                   scdc_long,
+                   #scdc_long,
                    ground_long)
 
 # plot correlations
