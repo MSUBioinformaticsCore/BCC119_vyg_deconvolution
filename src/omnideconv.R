@@ -27,34 +27,34 @@ bulk.mtx = readRDS(bulk.mtx.path)
 # Load Seurat reference object (single-cell data)
 seuratOb = readRDS(ref.seurat.path)
 
-# Subsample reference data ------------------------------------------------
-set.seed(1)  # Set random seed for reproducibility
-
-max_cells_per_celltype = 200  # Maximum cells to sample per cell type
-
-# Sample cells to a maximum per cell type using specified annotation column
-sampled.metadata <- seuratOb@meta.data %>%
-  rownames_to_column('barcode') %>%
-  group_by_at(annotation.col) %>% 
-  nest() %>%            
-  mutate(n = map_dbl(data, nrow)) %>%
-  mutate(n = min(n, max_cells_per_celltype)) %>%
-  ungroup() %>% 
-  mutate(samp = map2(data, n, sample_n)) %>% 
-  select(-data) %>%
-  unnest(samp)
-
-# Subset Seurat object to include only sampled cells
-single.cell.data.sampled <- subset(seuratOb, cells = sampled.metadata$barcode)
+# # Subsample reference data ------------------------------------------------
+# set.seed(1)  # Set random seed for reproducibility
+# 
+# max_cells_per_celltype = 200  # Maximum cells to sample per cell type
+# 
+# # Sample cells to a maximum per cell type using specified annotation column
+# sampled.metadata <- seuratOb@meta.data %>%
+#   rownames_to_column('barcode') %>%
+#   group_by_at(annotation.col) %>% 
+#   nest() %>%            
+#   mutate(n = map_dbl(data, nrow)) %>%
+#   mutate(n = min(n, max_cells_per_celltype)) %>%
+#   ungroup() %>% 
+#   mutate(samp = map2(data, n, sample_n)) %>% 
+#   select(-data) %>%
+#   unnest(samp)
+# 
+# # Subset Seurat object to include only sampled cells
+# single.cell.data.sampled <- subset(seuratOb, cells = sampled.metadata$barcode)
 
 # DWLS -------------------------------------------------------------
 
 if (tool == "dwls") {
   
   # Extract RNA count matrix and metadata for cell type and batch
-  single_cell_object <- as.matrix(single.cell.data.sampled[["RNA"]]$counts)
-  cell.type.annotations <- sampled.metadata %>% pull(all_of(annotation.col))
-  batch.ids <- sampled.metadata %>% pull(all_of(batch.col))
+  single_cell_object <- as.matrix(seuratOb[["RNA"]]$counts)
+  cell.type.annotations <- seuratOb@meta.data %>% pull(all_of(annotation.col))
+  batch.ids <- seuratOb@meta.data %>% pull(all_of(batch.col))
   
   # Build DWLS model using omnideconv
   signature <- omnideconv::build_model(single_cell_object = single_cell_object,
