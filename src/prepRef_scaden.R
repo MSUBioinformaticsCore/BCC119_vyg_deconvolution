@@ -18,25 +18,16 @@ if(!dir.exists(scaden_dir)){dir.create(scaden_dir)}
 set.seed(1)  # Set random seed for reproducibility
 seuratOb = readRDS(ref.seurat.path)
 
-max_cells_per_celltype = 200  # Maximum cells to sample per cell type
-
-# Sample cells to a maximum per cell type using specified annotation column
+# Sample 5000 cells 
 sampled.metadata <- seuratOb@meta.data %>%
   rownames_to_column('barcode') %>%
-  group_by_at(annotation.col) %>% 
-  nest() %>%            
-  mutate(n = map_dbl(data, nrow)) %>%
-  mutate(n = min(n, max_cells_per_celltype)) %>%
-  ungroup() %>% 
-  mutate(samp = map2(data, n, sample_n)) %>% 
-  select(-data) %>%
-  unnest(samp)
+  slice_sample(5000)
 
 # Subset Seurat object to include only sampled cells
 single.cell.data.sampled <- subset(seuratOb, cells = sampled.metadata$barcode)
 
 # normalize your count data to library size
-single.cell.data.sampled = NormalizeData(single.cell.data.sampled, 
+single.cell.data.sampled = NormalizeData(seuratOb, 
                                          normalization.method = "RC",
                                          scale.factor = 1e6)
 
