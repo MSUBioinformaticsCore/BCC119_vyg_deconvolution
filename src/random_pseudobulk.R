@@ -23,7 +23,7 @@ seurat_obj = readRDS(ref.seurat.path)
 generate_pseudobulk_with_proportions <- function(seurat_obj, num_cells) {
   
   # Randomly select `num_cells` from the Seurat object
-  sampled_cells <- sample(Cells(seurat_obj), num_cells, replace = FALSE)
+  # sampled_cells <- sample(Cells(seurat_obj), num_cells, replace = FALSE)
   # Get all cell types and their cell counts in the Seurat object
   cell_types <- as.character(unique(seurat_obj@meta.data %>% pull(all_of(annotation.col))))
   cell_types = cell_types[!is.na(cell_types)]

@@ -36,7 +36,7 @@ The following cell types are included in the reference data:
   19. Mast cell   
   20. TIM   
 
-Both MuSiC and SCDC are commonly used tools that take advantage of multi-subject reference data sets by appropriately weighting genes showing cross-subject and cross-cell consistency, though they use slightly different algorithms. DWLS is a newer tool that shows improved performance compared with MuSiC and SCDC using a single-subject reference in a recent [benchmarking study](https://www.biorxiv.org/content/10.1101/2024.06.10.598226v1.full).
+Both MuSiC and SCDC are commonly used tools that take advantage of multi-subject reference data sets by appropriately weighting genes showing cross-subject and cross-cell consistency, though they use slightly different algorithms. DWLS does not consider multiple subjects but shows improved performance compared with MuSiC and SCDC using a single-subject reference in a recent [benchmarking study](https://www.biorxiv.org/content/10.1101/2024.06.10.598226v1.full).
 
 ## Comparison of tool performace using pseudobulk samples. 
 
