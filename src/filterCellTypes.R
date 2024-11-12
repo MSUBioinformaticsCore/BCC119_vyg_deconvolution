@@ -5,9 +5,9 @@ library(Seurat)
 args <- commandArgs(TRUE)
 
 # Define paths and parameters from arguments
-ref.seurat.path = args[1]             # Path to Seurat reference data
-annotation.col = args[2]              # Column with cell type annotations
-remove.types = strsplit(args[3], ",") # cell types to discard 
+ref.seurat.path = args[1]                  # Path to Seurat reference data
+annotation.col = args[2]                   # Column with cell type annotations
+remove.types = strsplit(args[3], ",")[[1]] # cell types to discard 
 
 remove.types
 
