@@ -7,13 +7,18 @@ results.dir = "/mnt/research/bioinformaticsCore/projects/Yuzbasiyan-Gurkan/BCC11
 
 # Load the bulk RNA-seq data
 bulk = read.csv(paste0(data.dir, "/HS_MSU_RNAseq Analysis_rawCountsWithAnnotations.csv"))
+bulk_cellline = read.delim(paste0(data.dir, "/HS_BD_OD_PJ_RNAseq_rawCountsWithAnnotations.txt"))
 
 # Check the dimensions of the bulk RNA-seq data
 dim(bulk)
+dim(bulk_cellline)
+
+# join the two datasets
+bulk_all = left_join(bulk, bulk_cellline)
 
 # Extract relevant columns for RNA-seq data and convert to matrix
-bulk.mat = as.matrix(bulk[,c(12:34)])
-rownames(bulk.mat) = bulk$ensembl_gene_id
+bulk.mat = as.matrix(bulk_all[,c(12:38)])
+rownames(bulk.mat) = bulk_all$ensembl_gene_id
 
 # Load the gene lengths for normalization
 gene_lengths = read.delim(paste0(data.dir, "/gene_lengths_Canis_lupus_familiaris.CanFam3.1.100.txt"))
