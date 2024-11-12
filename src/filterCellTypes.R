@@ -11,6 +11,7 @@ remove.types = strsplit(args[3], ",") # cell types to discard
 
 # Load Seurat reference object (single-cell data)
 seuratOb = readRDS(ref.seurat.path)
+seuratOb
 
 # filter seurat object for cell types of interest
 cells_oi =
@@ -18,6 +19,7 @@ cells_oi =
   filter(!(!!sym(annotation.col) %in% remove.types)) 
 
 seuratOb_oi <- subset(seuratOb, cells = rownames(cells_oi))
+seuratOb_oi
 
 new_file = gsub("^(.*)[.].*", "\\1", ref.seurat.path)
 new_file = paste0(new_file, "_cells_oi.rds")
