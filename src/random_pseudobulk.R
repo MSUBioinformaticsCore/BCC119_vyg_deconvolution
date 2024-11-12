@@ -2,6 +2,9 @@
 library(Seurat)
 library(tidyverse)
 
+# Capture command line arguments
+args <- commandArgs(TRUE) 
+
 ref.seurat.path = args[1]            # Path to Seurat reference data
 annotation.col = args[2]             # Column with cell type annotations
 pseudo.dir = args[3]                 # Directory for results output
