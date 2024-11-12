@@ -5,11 +5,11 @@ library(tidyverse)
 # Capture command line arguments
 args <- commandArgs(TRUE) 
 
-ref.seurat.path = args[1]            # Path to Seurat reference data
-annotation.col = args[2]             # Column with cell type annotations
-pseudo.dir = args[3]                 # Directory for results output
-num_datasets = args[4]               # Number of pseudobulk datasets to create
-cells_per_sample = args[5]           # Number of cells per pseudobulk dataset
+ref.seurat.path = args[1]              # Path to Seurat reference data
+annotation.col = args[2]               # Column with cell type annotations
+pseudo.dir = args[3]                   # Directory for results output
+num_datasets = as.numeric(args[4])     # Number of pseudobulk datasets to create
+cells_per_sample = as.numeric(args[5]) # Number of cells per pseudobulk dataset
 
 # ref.seurat.path = "/mnt/research/bioinformaticsCore/projects/Yuzbasiyan-Gurkan/BCC119_vyg_deconvolution/data/Ammons_scrna/can"
 # annotation.col = "celltype.l1"
