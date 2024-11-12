@@ -9,6 +9,8 @@ ref.seurat.path = args[1]             # Path to Seurat reference data
 annotation.col = args[2]              # Column with cell type annotations
 remove.types = strsplit(args[3], ",") # cell types to discard 
 
+remove.types
+
 # Load Seurat reference object (single-cell data)
 seuratOb = readRDS(ref.seurat.path)
 seuratOb
