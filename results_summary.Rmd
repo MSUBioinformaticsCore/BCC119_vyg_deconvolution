@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning = FALSE)
 
 # Project Summary
 
-Here we use single-cell RNA-seq data from primary osteosarcoma in 6 treatment-naïve dogs ([Ammons et al, Commun Biol. 2024 Apr 24](https://www.nature.com/articles/s42003-024-06182-w)) as a reference data set to estimate immune cell proportions in bulk tumor samples using parallel methods [MuSiC](https://xuranw.github.io/MuSiC/articles/MuSiC.html), [SCDC](https://meichendong.github.io/SCDC/articles/SCDC.html#scdc-pre-process-of-scrna-seq-data-1), and [DWLS](https://cran.r-project.org/web/packages/DWLS/index.html).
+Here we use single-cell RNA-seq data from primary osteosarcoma in 6 treatment-naïve dogs ([Ammons et al, Commun Biol. 2024 Apr 24](https://www.nature.com/articles/s42003-024-06182-w)) as a reference data set to estimate immune cell proportions in bulk tumor samples and cell lines using parallel methods [MuSiC](https://xuranw.github.io/MuSiC/articles/MuSiC.html), [SCDC](https://meichendong.github.io/SCDC/articles/SCDC.html#scdc-pre-process-of-scrna-seq-data-1), and [DWLS](https://cran.r-project.org/web/packages/DWLS/index.html).
 
 The following cell types are included in the reference data. Osteoblast and Osteoclasts were removed.
 
