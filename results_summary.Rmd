@@ -13,34 +13,27 @@ knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning = FALSE)
 
 Here we use single-cell RNA-seq data from primary osteosarcoma in 6 treatment-naïve dogs ([Ammons et al, Commun Biol. 2024 Apr 24](https://www.nature.com/articles/s42003-024-06182-w)) as a reference data set to estimate immune cell proportions in bulk tumor samples using parallel methods [MuSiC](https://xuranw.github.io/MuSiC/articles/MuSiC.html), [SCDC](https://meichendong.github.io/SCDC/articles/SCDC.html#scdc-pre-process-of-scrna-seq-data-1), and [DWLS](https://cran.r-project.org/web/packages/DWLS/index.html).
 
-The following cell types are included in the reference data:
+The following cell types are included in the reference data. Osteoblast and Osteoclasts were removed.
 
   1. TAM    
   2. T cell   
   3. Endothelial cell   
-  4. Osteoblast   
-  5. T_cycling    
-  6. Hypoxic_osteoblast   
-  7. Cycling_OC   
-  8. Osteoblast_cycling   
-  9. B cell   
-  10. Neutrophil    
-  11. IFN-TAM   
-  12. CD320_OC    
-  13. Fibroblast    
-  14. T_IFN   
-  15. IFN-osteoblast    
-  16. DC    
-  17. NK    
-  18. Mature_OC   
-  19. Mast cell   
-  20. TIM   
+  4. T_cycling    
+  5. B cell   
+  6. Neutrophil    
+  7. IFN-TAM   
+  8. Fibroblast    
+  9. T_IFN   
+  10. DC    
+  11. NK    
+  12. Mast cell   
+  13. TIM   
 
 Both MuSiC and SCDC are commonly used tools that take advantage of multi-subject reference data sets by appropriately weighting genes showing cross-subject and cross-cell consistency, though they use slightly different algorithms. DWLS does not consider multiple subjects but shows improved performance compared with MuSiC and SCDC using a single-subject reference in a recent [benchmarking study](https://www.biorxiv.org/content/10.1101/2024.06.10.598226v1.full).
 
 ## Comparison of tool performace using pseudobulk samples. 
 
-To test how well these tools work with this reference data set, I created 100 pseudobulk samples by randomly selecting 10K (of ~30K) cells from each of the listed cell types in varying proportions.I've compared the known proportions with the predicted proportions from each tool below.
+To test how well these tools work with this reference data set, I created 100 pseudobulk samples by randomly selecting 3K (of ~18K) cells from each of the listed cell types in varying proportions.I've compared the known proportions with the predicted proportions from each tool below.
 
 ```{r, fig.width=6, fig.height=4, fig.align = 'center'}
 # load libraries
