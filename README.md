@@ -3,7 +3,7 @@
 
 # Project Summary
 
-Here we use single-cell RNA-seq data from primary osteosarcoma in 6 treatment-naïve dogs ([Ammons et al, Commun Biol. 2024 Apr 24](https://www.nature.com/articles/s42003-024-06182-w) as a reference data set to estimate immune cell proportions in bulk tumor samples using parallel methods [MuSiC](https://xuranw.github.io/MuSiC/articles/MuSiC.html), [SCDC](https://meichendong.github.io/SCDC/articles/SCDC.html#scdc-pre-process-of-scrna-seq-data-1), and [DWLS](https://cran.r-project.org/web/packages/DWLS/index.html).
+Here we use single-cell RNA-seq data from primary osteosarcoma in 6 treatment-naïve dogs ([Ammons et al, Commun Biol. 2024 Apr 24](https://www.nature.com/articles/s42003-024-06182-w) as a reference data set to estimate immune cell proportions in bulk tumor samples using parallel methods [MuSiC](https://xuranw.github.io/MuSiC/articles/MuSiC.html), [SCDC](https://meichendong.github.io/SCDC/articles/SCDC.html#scdc-pre-process-of-scrna-seq-data-1), [DWLS](https://cran.r-project.org/web/packages/DWLS/index.html), and [scaden](https://scaden.readthedocs.io/en/latest/index.html).
 
 # Set up
 
@@ -55,6 +55,30 @@ cd $PROJECT/data
 gtftools -l  gene_lengths_Canis_lupus_familiaris.CanFam3.1.100.txt Canis_lupus_familiaris.CanFam3.1.100.gtf
 ```
 
+## Filter reference for cell types of interest
+
+Removes specified cell types from the reference Seurat object leaving only the cell types of interest.
+
+**script:** `filterCellTypes.R`
+
+**arguments:** 
+
+1. Path to Seurat reference data    
+2. Column with cell type annotations    
+3. cell types to discard    
+
+**output:** `<original_file_name>_cells_oi.rds`
+
+```{bash}
+module purge
+module load R-bundle-CRAN/2023.12-foss-2023a
+
+Rscript $PROJECT/src/filterCellTypes.R \
+  $PROJECT/data/Ammons_scrna/canine_naive_n6_annotated.rds \
+  celltype.l1 \
+  "Osteoblast,Hypoxic_osteoblast,Osteoblast_cycling,IFN-osteoblast,Cycling_OC,CD320_OC,Mature_OC"
+```
+
 ## Make random pseuodbulk samples
 
 Creates n pseudobulk samples by randomly selecting m cells from each of the listed cell types in varying random proportions. 
@@ -82,17 +106,16 @@ module purge
 module load R-bundle-CRAN/2023.12-foss-2023a
 
 Rscript $PROJECT/src/random_pseudobulk.R \
-  $PROJECT/data/Ammons_scrna/canine_naive_n6_annotated.rds \
+  $PROJECT/data/Ammons_scrna/canine_naive_n6_annotated_cells_oi.rds \
   celltype.l1 \
   $PROJECT/data/Ammons_scrna/pseudobulk \
   100 \
-  10000
-
+  3000
 ```
 
 ## Normalize bulk 
 
-Uses the gene length file from gtftools to calculate tpm from the raw count data. Includes only genes with ensembl IDs present in both files. Gene symbols are used in the final matrix to match the single-cell reference data. Duplicated gene symbols have been removed. 
+Combines tumor RNA-seq data and cell-line RNA-seq data into the same data frame. Uses the gene length file from gtftools to calculate tpm from the raw count data. Includes only genes with ensembl IDs present in both files. Gene symbols are used in the final matrix to match the single-cell reference data. Duplicated gene symbols have been removed. 
 
 Filters the pseudobulk matrix for genes present in the bulk matrix. Length normalization was not performed on the pseudobulk matrix because it was generated using cells processed with a Chromium Next GEM Single Cell 3ʹ v3.1 kit.
 
@@ -145,7 +168,7 @@ do
   
   sbatch $PROJECT/src/submit_omnideconv.sh \
     $PROJECT/src/omnideconv.R \
-    $PROJECT/data/Ammons_scrna/canine_naive_n6_annotated.rds \
+    $PROJECT/data/Ammons_scrna/canine_naive_n6_annotated_cells_oi.rds \
     $PROJECT/data/bulk_tpm_mat.Rds \
     $tool \
     celltype.l1 \
@@ -157,14 +180,14 @@ done
 # pseudobulk
 mkdir $PROJECT/results/pseudobulk
 
-for tool in dwls #music  
+for tool in music #dwls   
 do
 
   echo $tool
   
   sbatch $PROJECT/src/submit_omnideconv.sh \
     $PROJECT/src/omnideconv.R \
-    $PROJECT/data/Ammons_scrna/canine_naive_n6_annotated.rds \
+    $PROJECT/data/Ammons_scrna/canine_naive_n6_annotated_cells_oi.rds \
     $PROJECT/data/Ammons_scrna/pseudobulk/pseudobulk_filtered_genes_counts_matrix.rds\
     $tool \
     celltype.l1 \
@@ -197,7 +220,7 @@ done
 
 sbatch $PROJECT/src/submitSCDC.sh \
   $PROJECT/src/SCDC.R \
-  $PROJECT/data/Ammons_scrna/canine_naive_n6_annotated.rds \
+  $PROJECT/data/Ammons_scrna/canine_naive_n6_annotated_cells_oi.rds \
   $PROJECT/data/bulk_tpm_mat.Rds \
   SCDC \
   celltype.l1 \
@@ -207,7 +230,7 @@ sbatch $PROJECT/src/submitSCDC.sh \
 # pseudobulk
 sbatch $PROJECT/src/submitSCDC.sh \
   $PROJECT/src/SCDC.R \
-  $PROJECT/data/Ammons_scrna/canine_naive_n6_annotated.rds \
+  $PROJECT/data/Ammons_scrna/canine_naive_n6_annotated_cells_oi.rds \
   $PROJECT/data/Ammons_scrna/pseudobulk/pseudobulk_filtered_genes_counts_matrix.rds \
   SCDC \
   celltype.l1 \
