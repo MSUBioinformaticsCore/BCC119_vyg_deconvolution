@@ -92,7 +92,7 @@ module load R-bundle-CRAN/2023.12-foss-2023a
 Rscript $PROJECT/src/filterCellTypes.R \
   $PROJECT/data/Ammons_scrna/canine_naive_n6_annotated.rds \
   celltype.l1 \
-  "Osteoblast, Hypoxic_osteoblast, Osteoblast_cycling, IFN-osteoblast, Cycling_OC, CD320_OC, Mature_OC"
+  "Osteoblast,Hypoxic_osteoblast,Osteoblast_cycling,IFN-osteoblast,Cycling_OC,CD320_OC,Mature_OC"
 ```
 
 ## Make random pseuodbulk samples
@@ -126,8 +126,7 @@ Rscript $PROJECT/src/random_pseudobulk.R \
   celltype.l1 \
   $PROJECT/data/Ammons_scrna/pseudobulk \
   100 \
-  10000
-
+  3000
 ```
 
 ## Normalize bulk 
@@ -197,7 +196,7 @@ done
 # pseudobulk
 mkdir $PROJECT/results/pseudobulk
 
-for tool in dwls #music  
+for tool in music #dwls   
 do
 
   echo $tool
